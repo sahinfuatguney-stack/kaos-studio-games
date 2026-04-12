@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Tycoon Şehri</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: Arial, sans-serif; 
+            overflow: hidden; 
+            background: #000; 
+        }
+        #gameCanvas { 
+            display: block; 
+            width: 100vw; 
+            height: 100vh; 
+        }
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 4px;
+            background: white;
+            border: 2px solid rgba(0,0,0,0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 0 0 1px white;
+        }
+        #ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
+            font-size: 18px;
+        }
+        .stat {
+            margin: 8px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        #instructions {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+            font-size: 14px;
+        }
+        #buyPrompt {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(0, 200, 0, 0.9);
+            padding: 20px 40px;
+            border-radius: 15px;
+            z-index: 100;
+            display: none;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            border: 3px solid white;
+            animation: glow 1s ease-in-out infinite;
+        }
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 0, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(0, 255, 0, 0.8); }
+        }
+        #startScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 500;
+            color: white;
+        }
+        #startScreen h1 {
+            font-size: 60px;
+            margin-bottom: 30px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        }
+        #startScreen p {
+            font-size: 22px;
+            margin: 8px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #startButton {
+            margin-top: 40px;
+            padding: 20px 80px;
+            font-size: 28px;
+            background: linear-gradient(135deg, #4ade80, #22c55e);
+            border: none;
+            border-radius: 15px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+        #startButton:hover {
+            transform: scale(1.1) translateY(-5px);
+            box-shadow: 0 15px 40px rgba(74, 222, 128, 0.6);
+        }
+        #message {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 24px;
+            z-index: 200;
+            display: none;
+            text-align: center;
+            border: 3px solid #4ade80;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="crosshair"></div>
+    
+    <div id="startScreen">
+        <h1>🏙️ TYCOON ŞEHRİ</h1>
+        <p>🎮 WASD - Hareket</p>
+        <p>🖱️ Mouse - Etrafa Bak</p>
+        <p>🏃 Shift - Koş</p>
+        <p>⏎ E - Bina Satın Al</p>
+        <button id="startButton">BAŞLA</button>
+    </div>
+
+    <div id="ui">
+        <div class="stat">💰 <span id="money">200</span>$</div>
+        <div class="stat">📈 <span id="income">0</span>$/sn</div>
+        <div class="stat">🏢 <span id="buildings">0</span> Bina</div>
+    </div>
+
+    <div id="instructions">
+        <div>WASD - Hareket</div>
+        <div>Mouse - Bak</div>
+        <div>Shift - Koş</div>
+        <div>E - Satın Al</div>
+    </div>
+
+    <div id="buyPrompt">
+        <div id="buyText">Para Toplayıcı - 50$ - +1$/sn</div>
+        <div style="margin-top: 10px;">Bas: E</div>
+    </div>
+
+    <div id="message"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        class TycoonGame {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.clock = new THREE.Clock();
+                
+                this.playerPos = new THREE.Vector3(0, 2.5, 30);
+                this.playerRot = new THREE.Euler(0, 0, 0, 'YXZ');
+                this.velocity = new THREE.Vector3();
+                
+                this.keys = {};
+                this.pointerLocked = false;
+                
+                this.money = 200;
+                this.income = 0;
+                this.buildings = [];
+                this.buySpots = [];
+                this.nearSpot = null;
+                
+                this.buildingTypes = [
+                    { name: 'Para Toplayıcı', cost: 50, income: 1, color: 0x3b82f6, height: 8 },
+                    { name: 'Fabrika', cost: 200, income: 5, color: 0xef4444, height: 15 },
+                    { name: 'Ofis', cost: 500, income: 15, color: 0x10b981, height: 22 },
+                    { name: 'Gökdelen', cost: 1500, income: 50, color: 0xf59e0b, height: 30 },
+                    { name: 'Mega Şirket', cost: 5000, income: 200, color: 0x8b5cf6, height: 45 }
+                ];
+            }
+
+            init() {
+                // Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x87ceeb);
+                this.scene.fog = new THREE.Fog(0x87ceeb, 80, 250);
+
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
+                this.camera.position.copy(this.playerPos);
+
+                // Renderer
+                const canvas = document.getElementById('gameCanvas');
+                this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+
+                // Lights
+                const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambient);
+
+                const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+                sun.position.set(80, 120, 60);
+                sun.castShadow = true;
+                sun.shadow.mapSize.width = 2048;
+                sun.shadow.mapSize.height = 2048;
+                sun.shadow.camera.left = -150;
+                sun.shadow.camera.right = 150;
+                sun.shadow.camera.top = 150;
+                sun.shadow.camera.bottom = -150;
+                this.scene.add(sun);
+
+                // Ground
+                const ground = new THREE.Mesh(
+                    new THREE.PlaneGeometry(400, 400),
+                    new THREE.MeshStandardMaterial({ color: 0x2d5016, roughness: 0.9 })
+                );
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+
+                // Grid
+                const grid = new THREE.GridHelper(400, 80, 0x444444, 0x666666);
+                this.scene.add(grid);
+
+                // Create buy spots
+                this.createBuySpots();
+
+                // Events
+                document.addEventListener('keydown', e => this.keys[e.key.toLowerCase()] = true);
+                document.addEventListener('keyup', e => this.keys[e.key.toLowerCase()] = false);
+                
+                document.addEventListener('mousemove', e => {
+                    if (!this.pointerLocked) return;
+                    this.playerRot.y -= e.movementX * 0.002;
+                    this.playerRot.x -= e.movementY * 0.002;
+                    this.playerRot.x = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, this.playerRot.x));
+                });
+
+                canvas.addEventListener('click', () => {
+                    if (!this.pointerLocked) canvas.requestPointerLock();
+                });
+
+                document.addEventListener('pointerlockchange', () => {
+                    this.pointerLocked = document.pointerLockElement === canvas;
+                });
+
+                document.getElementById('startButton').addEventListener('click', () => {
+                    document.getElementById('startScreen').style.display = 'none';
+                    canvas.requestPointerLock();
+                });
+
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                // Start
+                setInterval(() => {
+                    this.money += this.income;
+                    this.updateUI();
+                }, 1000);
+
+                this.animate();
+            }
+
+            createBuySpots() {
+                const layout = [
+                    [-50, -20], [-25, -20], [0, -20], [25, -20], [50, -20],
+                    [-50, -50], [-25, -50], [0, -50], [25, -50], [50, -50],
+                    [-50, 10], [-25, 10], [0, 10], [25, 10], [50, 10],
+                ];
+
+                layout.forEach((pos, i) => {
+                    const type = this.buildingTypes[i % this.buildingTypes.length];
+                    
+                    // Platform
+                    const platform = new THREE.Mesh(
+                        new THREE.CylinderGeometry(4, 4, 0.8, 32),
+                        new THREE.MeshStandardMaterial({ 
+                            color: type.color, 
+                            metalness: 0.6, 
+                            roughness: 0.4,
+                            emissive: type.color,
+                            emissiveIntensity: 0.2
+                        })
+                    );
+                    platform.position.set(pos[0], 0.4, pos[1]);
+                    platform.castShadow = true;
+                    platform.receiveShadow = true;
+                    this.scene.add(platform);
+
+                    // Glow ring
+                    const ring = new THREE.Mesh(
+                        new THREE.TorusGeometry(4.5, 0.2, 16, 32),
+                        new THREE.MeshBasicMaterial({ color: type.color })
+                    );
+                    ring.rotation.x = Math.PI / 2;
+                    ring.position.set(pos[0], 0.1, pos[1]);
+                    this.scene.add(ring);
+
+                    this.buySpots.push({
+                        pos: new THREE.Vector3(pos[0], 0, pos[1]),
+                        type: type,
+                        active: true,
+                        platform: platform,
+                        ring: ring
+                    });
+                });
+            }
+
+            update(delta) {
+                if (!this.pointerLocked) return;
+
+                // Movement
+                const speed = this.keys['shift'] ? 12 : 6;
+                const moveDir = new THREE.Vector3();
+
+                if (this.keys['w']) moveDir.z -= 1;
+                if (this.keys['s']) moveDir.z += 1;
+                if (this.keys['a']) moveDir.x -= 1;
+                if (this.keys['d']) moveDir.x += 1;
+
+                if (moveDir.length() > 0) {
+                    moveDir.normalize();
+                    moveDir.applyEuler(new THREE.Euler(0, this.playerRot.y, 0));
+                    this.playerPos.x += moveDir.x * speed * delta;
+                    this.playerPos.z += moveDir.z * speed * delta;
+                }
+
+                // Boundaries
+                this.playerPos.x = Math.max(-190, Math.min(190, this.playerPos.x));
+                this.playerPos.z = Math.max(-190, Math.min(190, this.playerPos.z));
+
+                // Update camera
+                this.camera.position.copy(this.playerPos);
+                this.camera.rotation.copy(this.playerRot);
+
+                // Check buy spots
+                this.checkBuySpots();
+            }
+
+            checkBuySpots() {
+                this.nearSpot = null;
+                let minDist = Infinity;
+
+                this.buySpots.forEach(spot => {
+                    if (!spot.active) return;
+                    
+                    const dist = this.playerPos.distanceTo(spot.pos);
+                    if (dist < 10 && dist < minDist) {
+                        minDist = dist;
+                        this.nearSpot = spot;
+                    }
+                });
+
+                const prompt = document.getElementById('buyPrompt');
+                if (this.nearSpot) {
+                    const t = this.nearSpot.type;
+                    document.getElementById('buyText').textContent = 
+                        `${t.name} - ${t.cost}$ - +${t.income}$/sn`;
+                    prompt.style.display = 'block';
+
+                    if (this.keys['e']) {
+                        this.tryBuy(this.nearSpot);
+                        this.keys['e'] = false;
+                    }
+                } else {
+                    prompt.style.display = 'none';
+                }
+            }
+
+            tryBuy(spot) {
+                const type = spot.type;
+                if (this.money >= type.cost) {
+                    this.money -= type.cost;
+                    this.income += type.income;
+                    this.buildBuilding(spot);
+                    spot.active = false;
+                    spot.platform.material.color.setHex(0x333333);
+                    spot.platform.material.emissiveIntensity = 0;
+                    spot.ring.visible = false;
+                    this.updateUI();
+                    this.showMessage(`✅ ${type.name} satın alındı!`);
+                } else {
+                    this.showMessage('❌ Yeterli paran yok!');
+                }
+            }
+
+            buildBuilding(spot) {
+                const type = spot.type;
+                const size = 6 + Math.random() * 3;
+                
+                const building = new THREE.Mesh(
+                    new THREE.BoxGeometry(size, type.height, size),
+                    new THREE.MeshStandardMaterial({ 
+                        color: type.color, 
+                        metalness: 0.3, 
+                        roughness: 0.7 
+                    })
+                );
+                building.position.set(spot.pos.x, type.height / 2, spot.pos.z);
+                building.castShadow = true;
+                building.receiveShadow = true;
+                this.scene.add(building);
+
+                // Windows
+                const floors = Math.floor(type.height / 3);
+                for (let f = 0; f < floors; f++) {
+                    for (let side = 0; side < 4; side++) {
+                        const win = new THREE.Mesh(
+                            new THREE.BoxGeometry(size * 0.15, type.height * 0.08, 0.1),
+                            new THREE.MeshStandardMaterial({ 
+                                color: 0xffff00,
+                                emissive: 0xffaa00,
+                                emissiveIntensity: 0.8
+                            })
+                        );
+                        
+                        const angle = (Math.PI / 2) * side;
+                        const dist = size / 2 + 0.05;
+                        win.position.x = Math.sin(angle) * dist;
+                        win.position.z = Math.cos(angle) * dist;
+                        win.position.y = -type.height / 2 + (f + 1) * (type.height / (floors + 1));
+                        win.rotation.y = angle;
+                        building.add(win);
+                    }
+                }
+
+                building.scale.set(0.1, 0.1, 0.1);
+                let s = 0.1;
+                const grow = () => {
+                    s += 0.08;
+                    if (s < 1) {
+                        building.scale.set(s, s, s);
+                        requestAnimationFrame(grow);
+                    } else {
+                        building.scale.set(1, 1, 1);
+                    }
+                };
+                grow();
+
+                this.buildings.push(building);
+            }
+
+            showMessage(text) {
+                const msg = document.getElementById('message');
+                msg.textContent = text;
+                msg.style.display = 'block';
+                setTimeout(() => msg.style.display = 'none', 2500);
+            }
+
+            updateUI() {
+                document.getElementById('money').textContent = Math.floor(this.money);
+                document.getElementById('income').textContent = this.income;
+                document.getElementById('buildings').textContent = this.buildings.length;
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const delta = this.clock.getDelta();
+                this.update(delta);
+
+                // Animate buildings
+                const time = Date.now() * 0.0003;
+                this.buildings.forEach((b, i) => {
+                    b.rotation.y = time + i * 0.5;
+                });
+
+                // Animate rings
+                this.buySpots.forEach((spot, i) => {
+                    if (spot.active) {
+                        spot.ring.rotation.z = time * 2 + i;
+                        spot.ring.position.y = 0.1 + Math.sin(time * 3 + i) * 0.3;
+                    }
+                });
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        const game = new TycoonGame();
+        window.addEventListener('load', () => game.init());
+    </script>
+</body>
+</html>

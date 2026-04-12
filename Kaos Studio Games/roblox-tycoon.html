@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏭 Roblox Tycoon</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; background: #1a1a2e; font-family: 'Segoe UI', sans-serif; }
+  #canvas { display: block; }
+
+  /* HUD */
+  #hud {
+    position: fixed; top: 0; left: 0; right: 0;
+    padding: 12px 20px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%);
+    display: flex; align-items: center; gap: 20px;
+    z-index: 100; pointer-events: none;
+  }
+  .hud-card {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 12px;
+    padding: 8px 16px;
+    backdrop-filter: blur(10px);
+  }
+  .hud-label { font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+  .hud-value { font-size: 20px; font-weight: 800; color: #FFD700; text-shadow: 0 0 20px #FFD70066; }
+  .hud-value.green { color: #44ff88; text-shadow: 0 0 20px #44ff8866; }
+  .hud-title {
+    font-size: 22px; font-weight: 900;
+    background: linear-gradient(90deg, #FF6B6B, #FFD93D, #6BCB77, #4D96FF);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-right: auto;
+  }
+  .level-badge {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 20px; padding: 6px 16px;
+    font-weight: 800; color: white; font-size: 14px;
+  }
+
+  /* SHOP PANEL */
+  #shop {
+    position: fixed; right: 0; top: 0; bottom: 0;
+    width: 280px;
+    background: rgba(10,10,30,0.92);
+    border-left: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(20px);
+    overflow-y: auto;
+    z-index: 100;
+    padding: 70px 12px 12px;
+  }
+  #shop::-webkit-scrollbar { width: 4px; }
+  #shop::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+
+  .shop-section-title {
+    font-size: 11px; color: #888; text-transform: uppercase;
+    letter-spacing: 2px; margin: 12px 4px 8px;
+  }
+
+  .shop-item {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    pointer-events: all;
+  }
+  .shop-item:hover:not(.locked) { background: rgba(255,255,255,0.12); transform: translateX(-3px); border-color: rgba(255,255,255,0.3); }
+  .shop-item.locked { opacity: 0.45; cursor: not-allowed; }
+  .shop-item.affordable { border-color: rgba(68,255,136,0.5); }
+
+  .item-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .item-icon { font-size: 26px; }
+  .item-name { font-weight: 700; color: #fff; font-size: 13px; }
+  .item-desc { font-size: 10px; color: #888; }
+  .item-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .item-price { font-weight: 800; color: #FFD700; font-size: 14px; }
+  .item-income { font-size: 10px; color: #44ff88; }
+  .item-count {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px; padding: 2px 8px;
+    font-size: 11px; color: #ccc; font-weight: 700;
+  }
+  .btn-buy {
+    background: linear-gradient(135deg, #44ff88, #00cc55);
+    border: none; border-radius: 8px;
+    padding: 6px 14px; font-weight: 800;
+    color: #003311; font-size: 12px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-buy:hover { transform: scale(1.05); box-shadow: 0 0 15px #44ff8866; }
+  .btn-buy:active { transform: scale(0.97); }
+  .btn-buy.cant { background: #333; color: #666; cursor: not-allowed; }
+
+  /* UPGRADE PANEL */
+  #upgrades {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: 240px;
+    background: rgba(10,10,30,0.92);
+    border-right: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(20px);
+    z-index: 100;
+    padding: 70px 12px 12px;
+    overflow-y: auto;
+  }
+  #upgrades::-webkit-scrollbar { width: 4px; }
+  #upgrades::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+
+  .upg-item {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    pointer-events: all;
+  }
+  .upg-item:hover:not(.maxed) { background: rgba(102,126,234,0.15); border-color: rgba(102,126,234,0.5); }
+  .upg-item.maxed { opacity: 0.5; cursor: default; }
+  .upg-name { font-size: 12px; font-weight: 700; color: #fff; }
+  .upg-level { font-size: 10px; color: #888; margin: 2px 0 6px; }
+  .upg-bar-bg { background: rgba(255,255,255,0.1); border-radius: 4px; height: 5px; }
+  .upg-bar { height: 5px; border-radius: 4px; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s; }
+  .upg-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .upg-cost { font-size: 11px; color: #FFD700; font-weight: 700; }
+  .upg-effect { font-size: 9px; color: #888; }
+  .btn-upg {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: none; border-radius: 6px;
+    padding: 4px 10px; font-size: 10px;
+    font-weight: 800; color: white; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-upg:hover { transform: scale(1.05); box-shadow: 0 0 12px #667eea66; }
+  .btn-upg.cant { background: #333; color: #666; cursor: not-allowed; }
+
+  /* NOTIFICATIONS */
+  #notifs {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 200; pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .notif {
+    background: rgba(0,0,0,0.85);
+    border-radius: 20px; padding: 8px 20px;
+    font-size: 13px; font-weight: 700;
+    color: white; border: 1px solid rgba(255,255,255,0.2);
+    animation: notifIn 0.3s ease, notifOut 0.4s ease 1.8s forwards;
+  }
+  @keyframes notifIn { from { opacity:0; transform: translateY(20px) scale(0.9); } to { opacity:1; transform: translateY(0) scale(1); } }
+  @keyframes notifOut { to { opacity:0; transform: translateY(-20px) scale(0.9); } }
+
+  /* FLOATING MONEY */
+  .float-money {
+    position: fixed; pointer-events: none; z-index: 150;
+    font-weight: 900; font-size: 18px;
+    color: #FFD700; text-shadow: 0 2px 8px #000;
+    animation: floatUp 1.2s ease forwards;
+  }
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-80px) scale(1.3); }
+  }
+
+  /* LEVEL UP */
+  #levelup {
+    position: fixed; inset: 0; z-index: 300;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.7);
+    pointer-events: none; opacity: 0; transition: opacity 0.3s;
+  }
+  #levelup.show { opacity: 1; }
+  .levelup-card {
+    background: linear-gradient(135deg, #1a1a3e, #2d1b69);
+    border: 2px solid rgba(255,215,0,0.5);
+    border-radius: 24px; padding: 40px 60px;
+    text-align: center;
+    animation: pulse 0.5s ease infinite alternate;
+  }
+  @keyframes pulse { from { box-shadow: 0 0 30px #FFD70033; } to { box-shadow: 0 0 60px #FFD70066; } }
+  .levelup-text { font-size: 48px; font-weight: 900; color: #FFD700; }
+  .levelup-sub { font-size: 18px; color: #aaa; margin-top: 8px; }
+
+  /* STATS */
+  #stats {
+    position: fixed; bottom: 16px; right: 292px;
+    background: rgba(10,10,30,0.85);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px; padding: 10px 16px;
+    backdrop-filter: blur(10px);
+    z-index: 100; pointer-events: none;
+  }
+  .stat-row { display: flex; justify-content: space-between; gap: 24px; font-size: 11px; }
+  .stat-row span:first-child { color: #888; }
+  .stat-row span:last-child { color: #fff; font-weight: 700; }
+
+  /* PRESTIGE */
+  #prestige-btn {
+    position: fixed; bottom: 16px; left: 252px;
+    background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+    border: none; border-radius: 14px;
+    padding: 10px 20px; font-size: 13px; font-weight: 900;
+    color: #1a0000; cursor: pointer; z-index: 100;
+    transition: all 0.2s; display: none;
+  }
+  #prestige-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px #ff6b6b66; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-title">🏭 TYCOON</div>
+  <div class="hud-card">
+    <div class="hud-label">💰 Para</div>
+    <div class="hud-value" id="money-display">$0</div>
+  </div>
+  <div class="hud-card">
+    <div class="hud-label">📈 Gelir/sn</div>
+    <div class="hud-value green" id="income-display">$0</div>
+  </div>
+  <div class="hud-card">
+    <div class="hud-label">💼 Toplam</div>
+    <div class="hud-value" id="total-display">$0</div>
+  </div>
+  <div class="level-badge" id="level-badge">⭐ Lv.1</div>
+</div>
+
+<!-- UPGRADES (LEFT) -->
+<div id="upgrades">
+  <div class="shop-section-title">🔧 Yükseltmeler</div>
+  <div id="upg-list"></div>
+</div>
+
+<!-- SHOP (RIGHT) -->
+<div id="shop">
+  <div class="shop-section-title">🏪 Satın Al</div>
+  <div id="shop-list"></div>
+  <div class="shop-section-title" style="margin-top:16px;">🏗️ Alan Genişlet</div>
+  <div id="expand-list"></div>
+</div>
+
+<!-- STATS -->
+<div id="stats">
+  <div class="stat-row"><span>🏭 Makine</span><span id="stat-machines">0</span></div>
+  <div class="stat-row" style="margin-top:4px;"><span>⏱️ Süre</span><span id="stat-time">00:00</span></div>
+  <div class="stat-row" style="margin-top:4px;"><span>🌟 Prestij</span><span id="stat-prestige">0</span></div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div id="notifs"></div>
+
+<!-- LEVEL UP -->
+<div id="levelup">
+  <div class="levelup-card">
+    <div style="font-size:60px;">🎉</div>
+    <div class="levelup-text">SEVİYE ATLADI!</div>
+    <div class="levelup-sub" id="levelup-text">Yeni seviyeye ulaştın!</div>
+  </div>
+</div>
+
+<!-- PRESTIGE -->
+<button id="prestige-btn" onclick="prestige()">🌟 PRESTİJ YAP<br><small style="font-size:10px;">x<span id="prestige-mult">2</span> bonus</small></button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================================================
+// GAME STATE
+// ============================================================
+let state = {
+  money: 0,
+  totalEarned: 0,
+  incomePerSecond: 0,
+  prestigeCount: 0,
+  prestigeMultiplier: 1,
+  level: 1,
+  startTime: Date.now(),
+  machines: {},    // id -> count
+  expansions: {},  // id -> bought
+  upgrades: {},    // id -> level
+};
+
+// ============================================================
+// DATA
+// ============================================================
+const MACHINES = [
+  { id:'coin', name:'Madeni Para Makinesi', icon:'🪙', desc:'Basit ama etkili', baseIncome:1, baseCost:10, color:0xFFD700, scale:0.6 },
+  { id:'press', name:'Para Presi', icon:'💵', desc:'Kağıt para basar', baseIncome:8, baseCost:80, color:0x4CAF50, scale:0.7 },
+  { id:'bank', name:'Mini Banka', icon:'🏦', desc:'Güvenli gelir', baseIncome:50, baseCost:500, color:0x2196F3, scale:0.9 },
+  { id:'factory', name:'Fabrika', icon:'🏭', desc:'Seri üretim', baseIncome:200, baseCost:2000, color:0xFF5722, scale:1.1 },
+  { id:'robot', name:'Robot Fabrika', icon:'🤖', desc:'Otomasyon gücü', baseIncome:800, baseCost:8000, color:0x9C27B0, scale:1.2 },
+  { id:'crypto', name:'Kripto Makinesi', icon:'₿', desc:'Dijital para', baseIncome:3000, baseCost:30000, color:0xFF9800, scale:1.0 },
+  { id:'gold', name:'Altın Madeni', icon:'⛏️', desc:'Altın çıkar', baseIncome:10000, baseCost:100000, color:0xFFD700, scale:1.3 },
+  { id:'space', name:'Uzay İstasyonu', icon:'🚀', desc:'Uzaydan kaynak', baseIncome:50000, baseCost:500000, color:0x00BCD4, scale:1.5 },
+];
+
+const EXPANSIONS = [
+  { id:'exp1', name:'Alan Genişletme I', icon:'🏗️', desc:'+50% alan', cost:500, unlockAt:100 },
+  { id:'exp2', name:'Alan Genişletme II', icon:'🏗️', desc:'+100% alan', cost:5000, unlockAt:1000 },
+  { id:'exp3', name:'Premium Alan', icon:'🌟', desc:'Efsanevi alan', cost:50000, unlockAt:10000 },
+];
+
+const UPGRADES = [
+  { id:'speed1', name:'Hız I', desc:'+20% hız', maxLevel:5, baseCost:200, costMult:3, effect:'speed', value:0.2 },
+  { id:'prod1', name:'Üretim I', desc:'+30% üretim', maxLevel:5, baseCost:500, costMult:3, effect:'production', value:0.3 },
+  { id:'speed2', name:'Hız II', desc:'+50% hız', maxLevel:3, baseCost:5000, costMult:5, effect:'speed', value:0.5 },
+  { id:'prod2', name:'Üretim II', desc:'+100% üretim', maxLevel:3, baseCost:10000, costMult:5, effect:'production', value:1.0 },
+  { id:'auto', name:'Oto-Topla', desc:'+200% gelir', maxLevel:1, baseCost:25000, costMult:1, effect:'production', value:2.0 },
+  { id:'mega', name:'Mega Boost', desc:'+500% üretim', maxLevel:1, baseCost:100000, costMult:1, effect:'production', value:5.0 },
+];
+
+// Level thresholds: totalEarned gereken miktar (index = seviye - 1)
+const LEVELS = [0, 200, 1000, 5000, 20000, 80000, 300000, 1000000, 5000000, 20000000];
+
+// ============================================================
+// THREE.JS SCENE
+// ============================================================
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setPixelRatio(window.devicePixelRatio);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
+scene.fog = new THREE.Fog(0x87CEEB, 30, 80);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(0, 18, 22);
+camera.lookAt(0, 0, 0);
+
+// Lighting
+const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xfff5e0, 1.2);
+sun.position.set(20, 40, 20);
+sun.castShadow = true;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+sun.shadow.camera.near = 0.5;
+sun.shadow.camera.far = 150;
+sun.shadow.camera.left = -40;
+sun.shadow.camera.right = 40;
+sun.shadow.camera.top = 40;
+sun.shadow.camera.bottom = -40;
+scene.add(sun);
+
+// Ground
+const groundGeo = new THREE.PlaneGeometry(80, 80);
+const groundMat = new THREE.MeshLambertMaterial({ color: 0x4CAF50 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Grid lines
+const gridHelper = new THREE.GridHelper(80, 40, 0x388E3C, 0x388E3C);
+gridHelper.position.y = 0.01;
+scene.add(gridHelper);
+
+// Sky gradient (simple colored background spheres)
+function createCloud(x, y, z) {
+  const g = new THREE.Group();
+  [0,1.5,-1.5,0.8,-0.8].forEach((dx,i) => {
+    const s = 1 + Math.random();
+    const geo = new THREE.SphereGeometry(s, 6, 6);
+    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(dx * 1.5, Math.random() * 0.5, i * 0.5);
+    g.add(m);
+  });
+  g.position.set(x, y, z);
+  scene.add(g);
+  return g;
+}
+const clouds = [];
+for (let i = 0; i < 8; i++) {
+  clouds.push(createCloud(
+    (Math.random() - 0.5) * 60,
+    15 + Math.random() * 10,
+    (Math.random() - 0.5) * 60
+  ));
+}
+
+// Decorative trees
+function createTree(x, z) {
+  const g = new THREE.Group();
+  const trunkGeo = new THREE.CylinderGeometry(0.15, 0.25, 1.5, 6);
+  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+  const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+  trunk.position.y = 0.75;
+  trunk.castShadow = true;
+  g.add(trunk);
+  const colors = [0x2E7D32, 0x388E3C, 0x43A047];
+  [0, 0.8, 1.5].forEach((dy, i) => {
+    const leafGeo = new THREE.ConeGeometry(1.2 - i * 0.3, 1.5, 6);
+    const leafMat = new THREE.MeshLambertMaterial({ color: colors[i] });
+    const leaf = new THREE.Mesh(leafGeo, leafMat);
+    leaf.position.y = 1.8 + dy;
+    leaf.castShadow = true;
+    g.add(leaf);
+  });
+  g.position.set(x, 0, z);
+  scene.add(g);
+}
+[[-12,8],[-14,4],[-13,-2],[10,9],[12,5],[11,-3],[-5,10],[5,10]].forEach(([x,z]) => createTree(x,z));
+
+// Fence boundary
+function createFence(size) {
+  const mat = new THREE.MeshLambertMaterial({ color: 0xD2691E });
+  for (let i = -size; i <= size; i += 2) {
+    [[-size,i],[size,i],[i,-size],[i,size]].forEach(([x,z]) => {
+      const geo = new THREE.BoxGeometry(0.3, 1.5, 0.3);
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, 0.75, z);
+      m.castShadow = true;
+      scene.add(m);
+    });
+  }
+}
+createFence(9);
+
+// ============================================================
+// MACHINE 3D OBJECTS
+// ============================================================
+const machineObjects = {}; // id -> array of THREE.Group
+const machinePositions = []; // list of {x,z}
+let posIdx = 0;
+
+// Pre-computed grid positions
+function getPosition() {
+  const positions = [];
+  for (let r = 0; r < 6; r++) {
+    for (let c = 0; c < 6; c++) {
+      positions.push({ x: -6 + c * 2.5, z: -6 + r * 2.5 });
+    }
+  }
+  return positions[posIdx % positions.length];
+}
+
+const machineColors = {};
+MACHINES.forEach(m => machineColors[m.id] = m.color);
+
+function createMachine3D(machineId, pos) {
+  const def = MACHINES.find(m => m.id === machineId);
+  const g = new THREE.Group();
+  const col = def.color;
+  const sc = def.scale;
+
+  // Base platform
+  const baseGeo = new THREE.BoxGeometry(1.8 * sc, 0.2, 1.8 * sc);
+  const baseMat = new THREE.MeshLambertMaterial({ color: 0x607D8B });
+  const base = new THREE.Mesh(baseGeo, baseMat);
+  base.position.y = 0.1;
+  base.castShadow = true; base.receiveShadow = true;
+  g.add(base);
+
+  // Main body
+  const bodyGeo = new THREE.BoxGeometry(1.2 * sc, 1.4 * sc, 1.2 * sc);
+  const bodyMat = new THREE.MeshLambertMaterial({ color: col });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 0.9 * sc;
+  body.castShadow = true;
+  g.add(body);
+
+  // Top detail
+  const topGeo = new THREE.CylinderGeometry(0.3 * sc, 0.4 * sc, 0.5 * sc, 8);
+  const topMat = new THREE.MeshLambertMaterial({ color: lightenColor(col, 0.3) });
+  const top = new THREE.Mesh(topGeo, topMat);
+  top.position.y = 1.85 * sc;
+  top.castShadow = true;
+  g.add(top);
+
+  // Spinning indicator
+  const spinGeo = new THREE.TorusGeometry(0.25 * sc, 0.06 * sc, 8, 16);
+  const spinMat = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
+  const spin = new THREE.Mesh(spinGeo, spinMat);
+  spin.position.y = 2.1 * sc;
+  spin.userData.spin = true;
+  g.add(spin);
+
+  // Screen glow
+  const screenGeo = new THREE.BoxGeometry(0.6 * sc, 0.4 * sc, 0.05);
+  const screenMat = new THREE.MeshLambertMaterial({ color: 0x00FF00, emissive: 0x00AA00 });
+  const screen = new THREE.Mesh(screenGeo, screenMat);
+  screen.position.set(0, 0.9 * sc, 0.62 * sc);
+  g.add(screen);
+
+  g.position.set(pos.x, 0, pos.z);
+  g.userData = { machineId, spinSpeed: 0.03 + Math.random() * 0.04 };
+  scene.add(g);
+
+  // Entrance animation
+  g.scale.set(0, 0, 0);
+  let t = 0;
+  const grow = setInterval(() => {
+    t += 0.05;
+    const s = Math.min(1, t * 1.5);
+    g.scale.set(s, s, s);
+    if (s >= 1) clearInterval(grow);
+  }, 16);
+
+  return g;
+}
+
+function lightenColor(hex, factor) {
+  const r = ((hex >> 16) & 0xFF);
+  const g = ((hex >> 8) & 0xFF);
+  const b = (hex & 0xFF);
+  return ((Math.min(255, r + (255 - r) * factor) << 16) |
+          (Math.min(255, g + (255 - g) * factor) << 8) |
+          Math.min(255, b + (255 - b) * factor));
+}
+
+// ============================================================
+// CAMERA ORBIT
+// ============================================================
+let camAngle = 0;
+let camDragging = false;
+let camLastX = 0;
+let camRadius = 26;
+let camHeight = 18;
+
+canvas.addEventListener('mousedown', e => { camDragging = true; camLastX = e.clientX; });
+canvas.addEventListener('mouseup', () => camDragging = false);
+canvas.addEventListener('mousemove', e => {
+  if (!camDragging) return;
+  camAngle -= (e.clientX - camLastX) * 0.005;
+  camLastX = e.clientX;
+});
+canvas.addEventListener('wheel', e => {
+  camRadius = Math.max(10, Math.min(50, camRadius + e.deltaY * 0.05));
+});
+
+// ============================================================
+// INCOME CALCULATION
+// ============================================================
+function getUpgradeMultiplier(effect) {
+  let mult = 1;
+  UPGRADES.forEach(u => {
+    const level = state.upgrades[u.id] || 0;
+    if (u.effect === effect && level > 0) {
+      mult += u.value * level;
+    }
+  });
+  return mult;
+}
+
+function calcIncome() {
+  let total = 0;
+  MACHINES.forEach(m => {
+    const cnt = state.machines[m.id] || 0;
+    if (cnt > 0) {
+      const base = m.baseIncome * cnt;
+      const mult = getUpgradeMultiplier('production') * state.prestigeMultiplier;
+      total += base * mult;
+    }
+  });
+  return total;
+}
+
+function getMachineCost(m) {
+  const cnt = state.machines[m.id] || 0;
+  return Math.floor(m.baseCost * Math.pow(1.15, cnt));
+}
+
+function getUpgradeCost(u) {
+  const level = state.upgrades[u.id] || 0;
+  return Math.floor(u.baseCost * Math.pow(u.costMult, level));
+}
+
+// ============================================================
+// PURCHASE LOGIC
+// ============================================================
+function buyMachine(id) {
+  const def = MACHINES.find(m => m.id === id);
+  const cost = getMachineCost(def);
+  if (state.money < cost) { notify('❌ Yeterli para yok!', '#ff4444'); return; }
+  state.money -= cost;
+  state.machines[id] = (state.machines[id] || 0) + 1;
+  state.incomePerSecond = calcIncome();
+
+  // Place 3D object
+  if (!machineObjects[id]) machineObjects[id] = [];
+  const pos = getPosition();
+  posIdx++;
+  const obj = createMachine3D(id, pos);
+  machineObjects[id].push(obj);
+
+  // Floating notification
+  notify(`✅ ${def.name} satın alındı! +${formatMoney(def.baseIncome * getUpgradeMultiplier('production'))}/s`, '#44ff88');
+  updateUI();
+  checkLevel();
+}
+
+function buyExpansion(id) {
+  const def = EXPANSIONS.find(e => e.id === id);
+  if (!def || state.expansions[id]) return;
+  if (state.money < def.cost) { notify('❌ Yeterli para yok!', '#ff4444'); return; }
+  state.money -= def.cost;
+  state.expansions[id] = true;
+  notify(`🏗️ ${def.name} satın alındı!`, '#4D96FF');
+  updateUI();
+}
+
+function buyUpgrade(id) {
+  const def = UPGRADES.find(u => u.id === id);
+  const level = state.upgrades[id] || 0;
+  if (level >= def.maxLevel) return;
+  const cost = getUpgradeCost(def);
+  if (state.money < cost) { notify('❌ Yeterli para yok!', '#ff4444'); return; }
+  state.money -= cost;
+  state.upgrades[id] = level + 1;
+  state.incomePerSecond = calcIncome();
+  notify(`⬆️ ${def.name} Lv.${level + 1}!`, '#667eea');
+  updateUI();
+}
+
+function prestige() {
+  if (state.totalEarned < 1000000) return;
+  state.prestigeCount++;
+  state.prestigeMultiplier = 1 + state.prestigeCount * 0.5;
+  state.money = 0;
+  state.totalEarned = 0;
+  state.machines = {};
+  state.upgrades = {};
+  state.expansions = {};
+  state.level = 1;
+  posIdx = 0;
+
+  // Remove all machine objects
+  Object.values(machineObjects).forEach(arr => arr.forEach(obj => scene.remove(obj)));
+  Object.keys(machineObjects).forEach(k => delete machineObjects[k]);
+
+  state.incomePerSecond = 0;
+  shopBuilt = false;
+  notify(`🌟 Prestij x${state.prestigeMultiplier}! Tüm bonus aktif!`, '#FFD700');
+  updateUI();
+}
+
+// ============================================================
+// LEVEL SYSTEM
+// ============================================================
+function checkLevel() {
+  // LEVELS[i] = i+1. seviyeye geçmek için gereken totalEarned
+  // Seviye 1 = LEVELS[0]=0 ile başlar
+  let newLevel = 1;
+  for (let i = 0; i < LEVELS.length; i++) {
+    if (state.totalEarned >= LEVELS[i]) newLevel = i + 1;
+    else break;
+  }
+  if (newLevel > state.level) {
+    state.level = newLevel;
+    showLevelUp(newLevel);
+  }
+}
+
+function showLevelUp(lvl) {
+  const el = document.getElementById('levelup');
+  document.getElementById('levelup-text').textContent = `Seviye ${lvl} - Yeni makineler açıldı!`;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+  notify(`⭐ SEVİYE ${lvl}!`, '#FFD700');
+}
+
+// ============================================================
+// FORMAT
+// ============================================================
+function formatMoney(n) {
+  if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(2) + 'K';
+  return '$' + Math.floor(n);
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+function notify(msg, color = '#FFD700') {
+  const el = document.createElement('div');
+  el.className = 'notif';
+  el.style.borderColor = color + '66';
+  el.style.color = color;
+  el.textContent = msg;
+  document.getElementById('notifs').appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+function floatMoney(amount) {
+  const el = document.createElement('div');
+  el.className = 'float-money';
+  el.textContent = '+' + formatMoney(amount);
+  el.style.left = (50 + Math.random() * 20 - 10) + '%';
+  el.style.top = (40 + Math.random() * 20) + '%';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1200);
+}
+
+// ============================================================
+// UI RENDER — sadece değişen değerleri güncelle, DOM'u sürekli silme
+// ============================================================
+
+let shopBuilt = false;
+
+function buildShopDOM() {
+  // SHOP - makine listesi
+  const shopList = document.getElementById('shop-list');
+  shopList.innerHTML = '';
+  MACHINES.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'shop-item';
+    div.id = 'shop-' + m.id;
+    div.innerHTML = `
+      <div class="item-header">
+        <span class="item-icon">${m.icon}</span>
+        <div style="flex:1">
+          <div class="item-name">${m.name}</div>
+          <div class="item-desc">${m.desc}</div>
+        </div>
+        <span class="item-count" id="cnt-${m.id}">0</span>
+      </div>
+      <div class="item-footer">
+        <div>
+          <div class="item-price" id="price-${m.id}">...</div>
+          <div class="item-income" id="inc-${m.id}">...</div>
+        </div>
+        <button class="btn-buy" id="btn-${m.id}">SATIN AL</button>
+      </div>
+    `;
+    shopList.appendChild(div);
+    // Butona sadece 1 kere listener ekle
+    document.getElementById('btn-' + m.id).addEventListener('click', () => buyMachine(m.id));
+  });
+
+  // EXPANSIONS
+  const expList = document.getElementById('expand-list');
+  expList.innerHTML = '';
+  EXPANSIONS.forEach(exp => {
+    const div = document.createElement('div');
+    div.className = 'shop-item';
+    div.id = 'exp-' + exp.id;
+    div.innerHTML = `
+      <div class="item-header">
+        <span class="item-icon">${exp.icon}</span>
+        <div>
+          <div class="item-name">${exp.name}</div>
+          <div class="item-desc">${exp.desc}</div>
+        </div>
+      </div>
+      <div class="item-footer">
+        <div class="item-price" id="expprice-${exp.id}">${formatMoney(exp.cost)}</div>
+        <button class="btn-buy" id="expbtn-${exp.id}">AL</button>
+      </div>
+    `;
+    expList.appendChild(div);
+    document.getElementById('expbtn-' + exp.id).addEventListener('click', () => buyExpansion(exp.id));
+  });
+
+  // UPGRADES
+  const upgList = document.getElementById('upg-list');
+  upgList.innerHTML = '';
+  UPGRADES.forEach(u => {
+    const div = document.createElement('div');
+    div.className = 'upg-item';
+    div.id = 'upg-' + u.id;
+    div.innerHTML = `
+      <div class="upg-name">${u.name}</div>
+      <div class="upg-level" id="ulvl-${u.id}">Seviye 0/${u.maxLevel} • ${u.desc}</div>
+      <div class="upg-bar-bg"><div class="upg-bar" id="ubar-${u.id}" style="width:0%"></div></div>
+      <div class="upg-footer">
+        <div>
+          <div class="upg-cost" id="ucost-${u.id}">...</div>
+          <div class="upg-effect">+${(u.value * 100)}% ${u.effect === 'speed' ? 'hız' : 'üretim'}</div>
+        </div>
+        <button class="btn-upg" id="ubtn-${u.id}">⬆️</button>
+      </div>
+    `;
+    upgList.appendChild(div);
+    document.getElementById('ubtn-' + u.id).addEventListener('click', () => buyUpgrade(u.id));
+  });
+
+  shopBuilt = true;
+}
+
+function updateUI() {
+  if (!shopBuilt) buildShopDOM();
+
+  document.getElementById('money-display').textContent = formatMoney(state.money);
+  document.getElementById('income-display').textContent = formatMoney(state.incomePerSecond) + '/s';
+  document.getElementById('total-display').textContent = formatMoney(state.totalEarned);
+  document.getElementById('level-badge').textContent = `⭐ Lv.${state.level}`;
+  document.getElementById('stat-machines').textContent = Object.values(state.machines).reduce((a, b) => a + b, 0);
+  document.getElementById('stat-prestige').textContent = state.prestigeCount;
+
+  const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+  const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const ss = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('stat-time').textContent = `${mm}:${ss}`;
+
+  // Makine butonlarını güncelle (sadece değerleri, DOM'u silme)
+  MACHINES.forEach(m => {
+    const cnt = state.machines[m.id] || 0;
+    const cost = getMachineCost(m);
+    const affordable = state.money >= cost;
+    const income = m.baseIncome * getUpgradeMultiplier('production') * state.prestigeMultiplier;
+
+    const cntEl = document.getElementById('cnt-' + m.id);
+    const priceEl = document.getElementById('price-' + m.id);
+    const incEl = document.getElementById('inc-' + m.id);
+    const btnEl = document.getElementById('btn-' + m.id);
+    const cardEl = document.getElementById('shop-' + m.id);
+
+    if (cntEl) cntEl.textContent = cnt;
+    if (priceEl) priceEl.textContent = formatMoney(cost);
+    if (incEl) incEl.textContent = '+' + formatMoney(income) + '/s';
+    if (btnEl) { btnEl.className = 'btn-buy' + (affordable ? '' : ' cant'); }
+    if (cardEl) { cardEl.className = 'shop-item' + (affordable ? ' affordable' : ''); }
+  });
+
+  // Expansion butonları
+  EXPANSIONS.forEach(exp => {
+    const bought = state.expansions[exp.id];
+    const affordable = !bought && state.money >= exp.cost;
+    const card = document.getElementById('exp-' + exp.id);
+    const btn = document.getElementById('expbtn-' + exp.id);
+    const price = document.getElementById('expprice-' + exp.id);
+    if (card) card.className = 'shop-item' + (bought ? ' locked' : (affordable ? ' affordable' : ''));
+    if (btn) { btn.className = 'btn-buy' + (bought ? ' cant' : (!affordable ? ' cant' : '')); btn.textContent = bought ? '✅' : 'AL'; btn.disabled = bought; }
+    if (price) price.textContent = bought ? '✅ Alındı' : formatMoney(exp.cost);
+  });
+
+  // Upgrade butonları
+  UPGRADES.forEach(u => {
+    const level = state.upgrades[u.id] || 0;
+    const maxed = level >= u.maxLevel;
+    const cost = getUpgradeCost(u);
+    const affordable = !maxed && state.money >= cost;
+    const pct = (level / u.maxLevel) * 100;
+
+    const card = document.getElementById('upg-' + u.id);
+    const lvlEl = document.getElementById('ulvl-' + u.id);
+    const barEl = document.getElementById('ubar-' + u.id);
+    const costEl = document.getElementById('ucost-' + u.id);
+    const btnEl = document.getElementById('ubtn-' + u.id);
+
+    if (card) card.className = 'upg-item' + (maxed ? ' maxed' : '');
+    if (lvlEl) lvlEl.textContent = `Seviye ${level}/${u.maxLevel} • ${u.desc}`;
+    if (barEl) barEl.style.width = pct + '%';
+    if (costEl) costEl.textContent = maxed ? '✅ MAX' : formatMoney(cost);
+    if (btnEl) { btnEl.className = 'btn-upg' + (affordable ? '' : ' cant'); btnEl.disabled = maxed; }
+  });
+
+  // Prestige button
+  const pb = document.getElementById('prestige-btn');
+  if (state.totalEarned >= 1000000) {
+    pb.style.display = 'block';
+    document.getElementById('prestige-mult').textContent = (1 + (state.prestigeCount + 1) * 0.5).toFixed(1);
+  }
+}
+
+// ============================================================
+// GAME LOOP
+// ============================================================
+let lastTime = performance.now();
+let floatTimer = 0;
+let uiTimer = 0;
+
+function animate(now) {
+  requestAnimationFrame(animate);
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+
+  // Income
+  const income = state.incomePerSecond * dt;
+  if (income > 0) {
+    state.money += income;
+    state.totalEarned += income;
+    floatTimer += income;
+    if (floatTimer > state.incomePerSecond * 2 && state.incomePerSecond > 0) {
+      floatTimer = 0;
+      floatMoney(income * 2);
+    }
+  }
+
+  // UI update every 100ms
+  uiTimer += dt;
+  if (uiTimer > 0.1) {
+    uiTimer = 0;
+    updateUI();
+    checkLevel();
+  }
+
+  // Camera orbit
+  camAngle += 0.001;
+  camera.position.x = Math.sin(camAngle) * camRadius;
+  camera.position.z = Math.cos(camAngle) * camRadius;
+  camera.position.y = camHeight;
+  camera.lookAt(0, 2, 0);
+
+  // Animate machines
+  scene.children.forEach(obj => {
+    if (obj.userData && obj.userData.machineId) {
+      const speed = obj.userData.spinSpeed * getUpgradeMultiplier('speed');
+      obj.children.forEach(child => {
+        if (child.userData.spin) {
+          child.rotation.y += speed;
+          child.rotation.x = Math.sin(now * 0.002) * 0.3;
+        }
+      });
+      // Gentle bob
+      obj.position.y = Math.sin(now * 0.001 + obj.position.x) * 0.05;
+    }
+  });
+
+  // Animate clouds
+  clouds.forEach((c, i) => {
+    c.position.x += 0.005 * (i % 2 === 0 ? 1 : -1);
+    if (c.position.x > 40) c.position.x = -40;
+    if (c.position.x < -40) c.position.x = 40;
+  });
+
+  renderer.render(scene, camera);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Start money
+state.money = 10;
+state.totalEarned = 0;
+state.level = 1;
+
+updateUI();
+animate(performance.now());
+
+notify('🎮 Oyun başladı! Para makinesi satın al!', '#44ff88');
+</script>
+</body>
+</html>

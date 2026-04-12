@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>★ ARCADE ZONE ★</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #00ff88;
+    --secondary: #ff6b35;
+    --accent: #c084fc;
+    --dark: #0a0a1a;
+    --card-bg: rgba(10,10,30,0.95);
+    --text-main: #e0e0ff;
+  }
+
+  body {
+    font-family: 'Orbitron', monospace;
+    background: #0a0a1a;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(0,255,136,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(192,132,252,0.05) 0%, transparent 60%);
+    color: var(--text-main);
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* HEADER */
+  .arcade-header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding: 20px;
+    border: 1px solid rgba(0,255,136,0.3);
+    border-radius: 14px;
+    background: rgba(0,255,136,0.04);
+    position: relative;
+    overflow: hidden;
+  }
+  .arcade-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent, #00ff88, transparent);
+    animation: scan 3s linear infinite;
+  }
+  @keyframes scan { to { left: 200%; } }
+
+  .arcade-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(14px, 4vw, 22px);
+    color: #00ff88;
+    text-shadow: 0 0 12px #00ff88, 0 0 24px rgba(0,255,136,0.4);
+    letter-spacing: 3px;
+    animation: flicker 4s ease-in-out infinite;
+  }
+  @keyframes flicker {
+    0%,95%,100% { opacity: 1; }
+    96% { opacity: 0.7; }
+    97% { opacity: 1; }
+    98% { opacity: 0.8; }
+  }
+
+  .score-bar {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 12px;
+    font-size: 10px;
+    color: #ff6b35;
+    text-shadow: 0 0 6px rgba(255,107,53,0.4);
+  }
+
+  /* GAME GRID */
+  .game-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .game-card {
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 12px;
+    background: rgba(10,10,30,0.9);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .game-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(0,255,136,0.08), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .game-card:hover { border-color: #00ff88; box-shadow: 0 0 18px rgba(0,255,136,0.25); transform: translateY(-3px); }
+  .game-card:hover::after { opacity: 1; }
+
+  .game-icon { font-size: 36px; margin-bottom: 10px; display: block; }
+  .game-name { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #00ff88; margin-bottom: 8px; line-height: 1.6; }
+  .game-desc { font-size: 9px; color: rgba(200,200,255,0.55); line-height: 1.6; }
+
+  .play-btn {
+    margin-top: 12px;
+    padding: 7px 16px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    background: transparent;
+    border: 1px solid #00ff88;
+    color: #00ff88;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .play-btn:hover { background: rgba(0,255,136,0.15); box-shadow: 0 0 10px rgba(0,255,136,0.4); }
+
+  /* GAME SCREEN */
+  .game-screen { display: none; border: 1px solid rgba(0,255,136,0.25); border-radius: 14px; background: rgba(10,10,30,0.95); padding: 20px; }
+  .game-screen.active { display: block; }
+
+  .back-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    background: transparent;
+    border: 1px solid #ff6b35;
+    color: #ff6b35;
+    border-radius: 5px;
+    padding: 7px 14px;
+    cursor: pointer;
+    margin-bottom: 16px;
+    transition: all 0.2s;
+  }
+  .back-btn:hover { background: rgba(255,107,53,0.12); }
+
+  .section-title { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #00ff88; text-align: center; margin-bottom: 16px; text-shadow: 0 0 8px rgba(0,255,136,0.4); }
+
+  canvas { display: block; margin: 0 auto; border: 1px solid rgba(0,255,136,0.3); border-radius: 8px; background: #050510; max-width: 100%; }
+
+  .game-info { text-align: center; font-size: 8px; color: rgba(200,200,255,0.5); margin-top: 10px; font-family: 'Press Start 2P', monospace; line-height: 1.8; }
+  .neon-score { color: #00ff88; text-shadow: 0 0 6px #00ff88; }
+
+  .stat-row { display: flex; justify-content: center; gap: 24px; margin-bottom: 14px; flex-wrap: wrap; }
+  .stat { text-align: center; font-family: 'Press Start 2P', monospace; font-size: 8px; }
+  .stat-val { font-size: 18px; color: #00ff88; display: block; margin-bottom: 4px; }
+  .stat-lbl { color: rgba(200,200,255,0.45); font-size: 7px; }
+
+  .ctrl-row { display: flex; justify-content: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .ctrl-btn {
+    font-family: 'Press Start 2P', monospace; font-size: 8px; padding: 8px 16px;
+    background: transparent; border: 1px solid rgba(0,255,136,0.4); color: #00ff88;
+    border-radius: 6px; cursor: pointer; transition: all 0.2s;
+  }
+  .ctrl-btn:hover { background: rgba(0,255,136,0.1); box-shadow: 0 0 8px rgba(0,255,136,0.3); }
+
+  .timer-bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.08); margin: 10px 0; overflow: hidden; }
+  .timer-fill { height: 100%; border-radius: 3px; background: #00ff88; transition: width 0.1s linear; }
+
+  .feedback { text-align: center; font-family: 'Press Start 2P', monospace; font-size: 10px; min-height: 22px; margin: 8px 0; }
+  .feedback.good { color: #00ff88; }
+  .feedback.bad { color: #ff5555; }
+
+  /* MEMORY */
+  #memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 340px; margin: 0 auto; }
+  .mem-card {
+    height: 64px; border: 1px solid rgba(0,255,136,0.25); border-radius: 8px;
+    background: #12103a; cursor: pointer; font-size: 24px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s; user-select: none;
+  }
+  .mem-card.flipped { background: rgba(0,255,136,0.12); border-color: #00ff88; }
+  .mem-card.matched { background: rgba(0,255,136,0.22); border-color: #00ff88; box-shadow: 0 0 10px rgba(0,255,136,0.25); }
+  .mem-card:not(.flipped):not(.matched) { font-size: 0; background: linear-gradient(135deg, #12103a, #1a1640); }
+
+  /* TYPING */
+  #typing-word { font-family: 'Press Start 2P', monospace; font-size: clamp(18px,5vw,28px); color: #ff6b35; text-align: center; letter-spacing: 5px; margin: 20px 0; text-shadow: 0 0 12px rgba(255,107,53,0.4); }
+  #typing-input {
+    width: 100%; max-width: 320px; display: block; margin: 0 auto 12px;
+    padding: 12px; font-family: 'Orbitron', monospace; font-size: 15px;
+    background: rgba(10,10,30,0.9); border: 1px solid rgba(0,255,136,0.4);
+    border-radius: 7px; color: #00ff88; text-align: center; outline: none;
+  }
+  #typing-input:focus { border-color: #00ff88; box-shadow: 0 0 8px rgba(0,255,136,0.25); }
+
+  /* QUIZ */
+  #quiz-question { font-size: 10px; font-family: 'Press Start 2P', monospace; color: var(--text-main); text-align: center; margin: 18px 0; line-height: 2; }
+  .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 380px; margin: 0 auto; }
+  .quiz-opt {
+    padding: 12px 8px; font-family: 'Press Start 2P', monospace; font-size: 7px;
+    background: transparent; border: 1px solid rgba(0,255,136,0.25);
+    color: var(--text-main); border-radius: 7px; cursor: pointer; line-height: 1.8; transition: all 0.2s;
+  }
+  .quiz-opt:hover { background: rgba(0,255,136,0.08); border-color: #00ff88; }
+  .quiz-opt.correct { background: rgba(0,255,136,0.2); border-color: #00ff88; color: #00ff88; }
+  .quiz-opt.wrong { background: rgba(255,50,50,0.15); border-color: #ff3333; color: #ff5555; }
+
+  /* REACTION */
+  #reaction-btn {
+    width: 190px; height: 190px; border-radius: 50%;
+    border: 2px solid rgba(0,255,136,0.35); background: #12103a;
+    color: var(--text-main); font-family: 'Press Start 2P', monospace; font-size: 9px;
+    cursor: pointer; display: block; margin: 24px auto; transition: all 0.2s; line-height: 1.8;
+  }
+  #reaction-btn.ready { background: rgba(0,255,136,0.18); border-color: #00ff88; color: #00ff88; box-shadow: 0 0 24px rgba(0,255,136,0.35); }
+  #reaction-btn.early { background: rgba(255,50,50,0.15); border-color: #ff3333; color: #ff5555; }
+
+  /* MATH */
+  #math-display { font-family: 'Press Start 2P', monospace; font-size: clamp(20px,6vw,32px); color: #c084fc; text-align: center; margin: 18px 0; text-shadow: 0 0 10px rgba(192,132,252,0.35); }
+  #math-input {
+    width: 160px; display: block; margin: 0 auto 12px;
+    padding: 12px; font-family: 'Press Start 2P', monospace; font-size: 15px;
+    background: rgba(10,10,30,0.9); border: 1px solid rgba(192,132,252,0.4);
+    border-radius: 7px; color: #c084fc; text-align: center; outline: none;
+  }
+  #math-input:focus { border-color: #c084fc; box-shadow: 0 0 8px rgba(192,132,252,0.25); }
+
+  /* DPAD */
+  .dpad { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 12px; }
+  .dpad-row { display: flex; gap: 4px; }
+  .dpad-btn { width: 44px; height: 44px; font-family: 'Press Start 2P', monospace; font-size: 13px; background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.3); color: #00ff88; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; user-select: none; }
+  .dpad-btn:active { background: rgba(0,255,136,0.25); }
+  .dpad-center { width: 44px; height: 44px; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #0a0a1a; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,255,136,0.3); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="arcade-header">
+  <div class="arcade-title">★ ARCADE ZONE ★</div>
+  <div class="score-bar">
+    <span>TOPLAM SKOR: <span id="total-score">0</span></span>
+  </div>
+</div>
+
+<!-- ANA MENÜ -->
+<div id="main-menu">
+  <div class="game-grid">
+    <div class="game-card" onclick="openGame('snake')">
+      <span class="game-icon">🐍</span>
+      <div class="game-name">SNAKE</div>
+      <div class="game-desc">Yılanı besle, duvarlara çarpma!</div>
+      <button class="play-btn">OYNA</button>
+    </div>
+    <div class="game-card" onclick="openGame('memory')">
+      <span class="game-icon">🧠</span>
+      <div class="game-name">HAFIZA</div>
+      <div class="game-desc">Kartları eşleştir, hafızanı test et!</div>
+      <button class="play-btn">OYNA</button>
+    </div>
+    <div class="game-card" onclick="openGame('typing')">
+      <span class="game-icon">⌨️</span>
+      <div class="game-name">YAZMA HIZI</div>
+      <div class="game-desc">Kelimeleri hızlıca yaz!</div>
+      <button class="play-btn">OYNA</button>
+    </div>
+    <div class="game-card" onclick="openGame('quiz')">
+      <span class="game-icon">❓</span>
+      <div class="game-name">GENEL KÜLTÜR</div>
+      <div class="game-desc">10 soruyu doğru cevapla!</div>
+      <button class="play-btn">OYNA</button>
+    </div>
+    <div class="game-card" onclick="openGame('reaction')">
+      <span class="game-icon">⚡</span>
+      <div class="game-name">REAKSİYON</div>
+      <div class="game-desc">Renk değişince hemen tıkla!</div>
+      <button class="play-btn">OYNA</button>
+    </div>
+    <div class="game-card" onclick="openGame('math')">
+      <span class="game-icon">🔢</span>
+      <div class="game-name">HIZLI MATEMATİK</div>
+      <div class="game-desc">İşlemleri hızla çöz!</div>
+      <button class="play-btn">OYNA</button>
+    </div>
+  </div>
+</div>
+
+<!-- SNAKE -->
+<div class="game-screen" id="screen-snake">
+  <button class="back-btn" onclick="closeGame()">← GERİ</button>
+  <div class="section-title">🐍 SNAKE</div>
+  <div class="stat-row">
+    <div class="stat"><span class="stat-val neon-score" id="snake-score">0</span><span class="stat-lbl">SKOR</span></div>
+    <div class="stat"><span class="stat-val" id="snake-hi" style="color:#ff6b35">0</span><span class="stat-lbl">EN İYİ</span></div>
+  </div>
+  <canvas id="snake-canvas" width="300" height="300"></canvas>
+  <div class="game-info">Ok tuşları veya WASD ile oyna</div>
+  <div class="dpad">
+    <div class="dpad-row"><div class="dpad-center"></div><div class="dpad-btn" onclick="setDir(0,-1)">▲</div><div class="dpad-center"></div></div>
+    <div class="dpad-row"><div class="dpad-btn" onclick="setDir(-1,0)">◄</div><div class="dpad-center"></div><div class="dpad-btn" onclick="setDir(1,0)">►</div></div>
+    <div class="dpad-row"><div class="dpad-center"></div><div class="dpad-btn" onclick="setDir(0,1)">▼</div><div class="dpad-center"></div></div>
+  </div>
+  <div class="ctrl-row"><button class="ctrl-btn" onclick="startSnake()">BAŞLAT / YENİDEN</button></div>
+</div>
+
+<!-- MEMORY -->
+<div class="game-screen" id="screen-memory">
+  <button class="back-btn" onclick="closeGame()">← GERİ</button>
+  <div class="section-title">🧠 HAFIZA OYUNU</div>
+  <div class="stat-row">
+    <div class="stat"><span class="stat-val neon-score" id="mem-moves">0</span><span class="stat-lbl">HAMLE</span></div>
+    <div class="stat"><span class="stat-val" id="mem-pairs" style="color:#ff6b35">0/8</span><span class="stat-lbl">EŞLEŞTİ</span></div>
+    <div class="stat"><span class="stat-val" id="mem-time" style="color:#c084fc">0</span><span class="stat-lbl">SANİYE</span></div>
+  </div>
+  <div id="memory-grid"></div>
+  <div class="ctrl-row" style="margin-top:16px"><button class="ctrl-btn" onclick="initMemory()">YENİDEN BAŞLAT</button></div>
+</div>
+
+<!-- TYPING -->
+<div class="game-screen" id="screen-typing">
+  <button class="back-btn" onclick="closeGame()">← GERİ</button>
+  <div class="section-title">⌨️ YAZMA HIZI</div>
+  <div class="stat-row">
+    <div class="stat"><span class="stat-val neon-score" id="typing-wpm">0</span><span class="stat-lbl">KELİME/DK</span></div>
+    <div class="stat"><span class="stat-val" id="typing-acc" style="color:#ff6b35">100%</span><span class="stat-lbl">DOĞRULUK</span></div>
+    <div class="stat"><span class="stat-val" id="typing-streak" style="color:#c084fc">0</span><span class="stat-lbl">SERİ</span></div>
+  </div>
+  <div class="timer-bar"><div class="timer-fill" id="typing-timer" style="background:#ff6b35"></div></div>
+  <div id="typing-word">BAŞLAT</div>
+  <input type="text" id="typing-input" placeholder="Buraya yaz..." autocomplete="off" autocorrect="off" spellcheck="false">
+  <div class="feedback" id="typing-feedback"></div>
+  <div class="ctrl-row"><button class="ctrl-btn" onclick="startTyping()">BAŞLAT (60s)</button></div>
+</div>
+
+<!-- QUIZ -->
+<div class="game-screen" id="screen-quiz">
+  <button class="back-btn" onclick="closeGame()">← GERİ</button>
+  <div class="section-title">❓ GENEL KÜLTÜR</div>
+  <div class="stat-row">
+    <div class="stat"><span class="stat-val neon-score" id="quiz-score">0</span><span class="stat-lbl">SKOR</span></div>
+    <div class="stat"><span class="stat-val" id="quiz-q" style="color:#ff6b35">1/10</span><span class="stat-lbl">SORU</span></div>
+  </div>
+  <div class="timer-bar"><div class="timer-fill" id="quiz-timer"></div></div>
+  <div id="quiz-question">Oyunu başlatmak için butona bas</div>
+  <div class="quiz-options" id="quiz-options"></div>
+  <div class="feedback" id="quiz-feedback"></div>
+  <div class="ctrl-row"><button class="ctrl-btn" onclick="startQuiz()">BAŞLAT</button></div>
+</div>
+
+<!-- REACTION -->
+<div class="game-screen" id="screen-reaction">
+  <button class="back-btn" onclick="closeGame()">← GERİ</button>
+  <div class="section-title">⚡ REAKSİYON TESTİ</div>
+  <div class="stat-row">
+    <div class="stat"><span class="stat-val neon-score" id="rxn-last">-</span><span class="stat-lbl">SON (ms)</span></div>
+    <div class="stat"><span class="stat-val" id="rxn-best" style="color:#ff6b35">-</span><span class="stat-lbl">EN İYİ (ms)</span></div>
+    <div class="stat"><span class="stat-val" id="rxn-avg" style="color:#c084fc">-</span><span class="stat-lbl">ORTALAMA</span></div>
+  </div>
+  <button id="reaction-btn" onclick="handleReaction()">TIKLA VE<br>BAŞLA</button>
+  <div class="feedback" id="rxn-feedback" style="font-size:9px"></div>
+</div>
+
+<!-- MATH -->
+<div class="game-screen" id="screen-math">
+  <button class="back-btn" onclick="closeGame()">← GERİ</button>
+  <div class="section-title">🔢 HIZLI MATEMATİK</div>
+  <div class="stat-row">
+    <div class="stat"><span class="stat-val neon-score" id="math-score">0</span><span class="stat-lbl">SKOR</span></div>
+    <div class="stat"><span class="stat-val" id="math-streak" style="color:#ff6b35">0</span><span class="stat-lbl">SERİ</span></div>
+    <div class="stat"><span class="stat-val" id="math-level" style="color:#c084fc">1</span><span class="stat-lbl">SEVİYE</span></div>
+  </div>
+  <div class="timer-bar"><div class="timer-fill" id="math-timer" style="background:#c084fc"></div></div>
+  <div id="math-display">? ? ?</div>
+  <input type="number" id="math-input" placeholder="Cevap" autocomplete="off">
+  <div class="feedback" id="math-feedback"></div>
+  <div class="ctrl-row"><button class="ctrl-btn" onclick="startMath()">BAŞLAT</button></div>
+</div>
+
+<script>
+// ====== GLOBAL ======
+let totalScore = 0;
+function addScore(n) {
+  totalScore += n;
+  document.getElementById('total-score').textContent = totalScore;
+}
+
+function openGame(id) {
+  document.getElementById('main-menu').style.display = 'none';
+  document.querySelectorAll('.game-screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  if (id === 'memory') initMemory();
+  if (id === 'typing') resetTyping();
+  if (id === 'quiz') resetQuiz();
+  if (id === 'reaction') resetReaction();
+  if (id === 'math') resetMath();
+  if (id === 'snake') drawSnakeIdle();
+}
+
+function closeGame() {
+  stopAll();
+  document.getElementById('main-menu').style.display = 'block';
+  document.querySelectorAll('.game-screen').forEach(s => s.classList.remove('active'));
+}
+
+function stopAll() {
+  clearInterval(snakeInterval);
+  clearInterval(memTimer);
+  clearInterval(typingTimer);
+  clearInterval(quizTimer);
+  clearTimeout(rxnTimeout2);
+  clearInterval(mathTimerInterval);
+  snakeRunning = false;
+  typingActive = false;
+  quizActive = false;
+  mathActive = false;
+}
+
+// ====== SNAKE ======
+let snakeInterval, snakeRunning = false;
+let snake, food, snakeDir, snakeNextDir, snakeScore, snakeHi = 0;
+const SC = 300, GRID = 15, CELL = SC / GRID;
+
+function drawSnakeIdle() {
+  const ctx = document.getElementById('snake-canvas').getContext('2d');
+  ctx.fillStyle = '#050510';
+  ctx.fillRect(0, 0, SC, SC);
+  ctx.fillStyle = 'rgba(0,255,136,0.4)';
+  ctx.font = '12px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillText('BAŞLAT', SC / 2, SC / 2);
+}
+
+function setDir(x, y) {
+  if (!snakeRunning) return;
+  if (x === -snakeDir.x && y === -snakeDir.y) return;
+  snakeNextDir = { x, y };
+}
+
+function startSnake() {
+  clearInterval(snakeInterval);
+  snake = [{ x: 7, y: 7 }, { x: 6, y: 7 }, { x: 5, y: 7 }];
+  snakeDir = { x: 1, y: 0 };
+  snakeNextDir = { x: 1, y: 0 };
+  snakeScore = 0;
+  document.getElementById('snake-score').textContent = 0;
+  placeFood();
+  snakeRunning = true;
+  snakeInterval = setInterval(tickSnake, 120);
+}
+
+function placeFood() {
+  let pos;
+  do { pos = { x: Math.floor(Math.random() * GRID), y: Math.floor(Math.random() * GRID) }; }
+  while (snake.some(s => s.x === pos.x && s.y === pos.y));
+  food = pos;
+}
+
+function tickSnake() {
+  snakeDir = { ...snakeNextDir };
+  const head = { x: snake[0].x + snakeDir.x, y: snake[0].y + snakeDir.y };
+  if (head.x < 0 || head.x >= GRID || head.y < 0 || head.y >= GRID || snake.some(s => s.x === head.x && s.y === head.y)) {
+    clearInterval(snakeInterval);
+    snakeRunning = false;
+    if (snakeScore > snakeHi) { snakeHi = snakeScore; document.getElementById('snake-hi').textContent = snakeHi; }
+    addScore(snakeScore);
+    const ctx = document.getElementById('snake-canvas').getContext('2d');
+    ctx.fillStyle = 'rgba(255,50,50,0.45)';
+    ctx.fillRect(0, 0, SC, SC);
+    ctx.fillStyle = '#ff5555';
+    ctx.font = '12px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillText('GAME OVER', SC / 2, SC / 2 - 12);
+    ctx.font = '9px "Press Start 2P"';
+    ctx.fillText('Skor: ' + snakeScore, SC / 2, SC / 2 + 14);
+    return;
+  }
+  snake.unshift(head);
+  if (head.x === food.x && head.y === food.y) {
+    snakeScore++;
+    document.getElementById('snake-score').textContent = snakeScore;
+    placeFood();
+  } else { snake.pop(); }
+  drawSnake();
+}
+
+function drawSnake() {
+  const ctx = document.getElementById('snake-canvas').getContext('2d');
+  ctx.fillStyle = '#050510';
+  ctx.fillRect(0, 0, SC, SC);
+  ctx.fillStyle = 'rgba(0,255,136,0.04)';
+  for (let i = 0; i < GRID; i++) for (let j = 0; j < GRID; j++)
+    if ((i + j) % 2 === 0) ctx.fillRect(i * CELL, j * CELL, CELL, CELL);
+  snake.forEach((s, i) => {
+    const alpha = Math.max(0.2, 1 - i * 0.04);
+    ctx.fillStyle = i === 0 ? '#00ff88' : `rgba(0,200,100,${alpha})`;
+    ctx.beginPath();
+    ctx.roundRect(s.x * CELL + 2, s.y * CELL + 2, CELL - 4, CELL - 4, 3);
+    ctx.fill();
+  });
+  ctx.fillStyle = '#ff6b35';
+  ctx.shadowColor = '#ff6b35';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.arc(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, CELL / 2 - 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+document.addEventListener('keydown', e => {
+  if (!snakeRunning) return;
+  const map = { ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 }, ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 }, w: { x: 0, y: -1 }, s: { x: 0, y: 1 }, a: { x: -1, y: 0 }, d: { x: 1, y: 0 }, W: { x: 0, y: -1 }, S: { x: 0, y: 1 }, A: { x: -1, y: 0 }, D: { x: 1, y: 0 } };
+  const nd = map[e.key];
+  if (nd && !(nd.x === -snakeDir.x && nd.y === -snakeDir.y)) { snakeNextDir = nd; e.preventDefault(); }
+});
+
+// ====== MEMORY ======
+let memTimer, memSec = 0, memMoves = 0, memPairs = 0, memFlipped = [], memLocked = false;
+const memEmojis = ['🎮', '🚀', '⭐', '🔥', '💎', '🌙', '🎯', '🎲'];
+
+function initMemory() {
+  clearInterval(memTimer);
+  memSec = 0; memMoves = 0; memPairs = 0; memFlipped = []; memLocked = false;
+  document.getElementById('mem-moves').textContent = 0;
+  document.getElementById('mem-pairs').textContent = '0/8';
+  document.getElementById('mem-time').textContent = 0;
+  const cards = [...memEmojis, ...memEmojis].sort(() => Math.random() - 0.5);
+  const grid = document.getElementById('memory-grid');
+  grid.innerHTML = '';
+  cards.forEach((emoji, i) => {
+    const d = document.createElement('div');
+    d.className = 'mem-card';
+    d.dataset.val = emoji;
+    d.dataset.idx = i;
+    d.onclick = () => flipCard(d);
+    grid.appendChild(d);
+  });
+  memTimer = setInterval(() => { memSec++; document.getElementById('mem-time').textContent = memSec; }, 1000);
+}
+
+function flipCard(card) {
+  if (memLocked || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+  card.classList.add('flipped');
+  card.textContent = card.dataset.val;
+  memFlipped.push(card);
+  if (memFlipped.length === 2) {
+    memLocked = true;
+    memMoves++;
+    document.getElementById('mem-moves').textContent = memMoves;
+    if (memFlipped[0].dataset.val === memFlipped[1].dataset.val) {
+      memFlipped.forEach(c => c.classList.add('matched'));
+      memPairs++;
+      document.getElementById('mem-pairs').textContent = memPairs + '/8';
+      memFlipped = []; memLocked = false;
+      if (memPairs === 8) {
+        clearInterval(memTimer);
+        const pts = Math.max(50, 500 - memMoves * 10 - memSec * 2);
+        addScore(pts);
+        setTimeout(() => alert('Tebrikler! ' + memMoves + ' hamlede, ' + memSec + ' saniyede bitirdin!\n+' + pts + ' puan!'), 200);
+      }
+    } else {
+      setTimeout(() => { memFlipped.forEach(c => { c.classList.remove('flipped'); c.textContent = ''; }); memFlipped = []; memLocked = false; }, 900);
+    }
+  }
+}
+
+// ====== TYPING ======
+const wordPool = ['kalem','masa','araba','ev','okul','çiçek','güneş','ay','yıldız','deniz','balık','kuş','ağaç','dağ','nehir','köy','şehir','insan','çocuk','anne','baba','kitap','kapı','yol','taş','su','ateş','rüzgar','bulut','yağmur','kar','buz','çilek','elma','armut','üzüm','kiraz','muz','portakal','limon'];
+let typingTimer, typingActive = false, typingLeft = 60, typingIdx = 0, typingWords = [];
+let typingCorrect = 0, typingTotal = 0, typingStreak = 0;
+
+function resetTyping() {
+  clearInterval(typingTimer);
+  typingActive = false; typingLeft = 60; typingCorrect = 0; typingTotal = 0; typingStreak = 0; typingIdx = 0;
+  document.getElementById('typing-word').textContent = 'BAŞLAT';
+  document.getElementById('typing-input').value = '';
+  document.getElementById('typing-input').disabled = false;
+  document.getElementById('typing-wpm').textContent = 0;
+  document.getElementById('typing-acc').textContent = '100%';
+  document.getElementById('typing-streak').textContent = 0;
+  document.getElementById('typing-timer').style.width = '100%';
+  document.getElementById('typing-feedback').textContent = '';
+  document.getElementById('typing-feedback').className = 'feedback';
+}
+
+function startTyping() {
+  resetTyping();
+  typingWords = [...wordPool].sort(() => Math.random() - 0.5);
+  typingActive = true;
+  document.getElementById('typing-word').textContent = typingWords[0];
+  document.getElementById('typing-input').focus();
+  typingTimer = setInterval(() => {
+    typingLeft--;
+    document.getElementById('typing-timer').style.width = (typingLeft / 60 * 100) + '%';
+    if (typingLeft <= 0) {
+      clearInterval(typingTimer);
+      typingActive = false;
+      document.getElementById('typing-word').textContent = 'BİTTİ!';
+      document.getElementById('typing-input').disabled = true;
+      const pts = typingCorrect * 5;
+      addScore(pts);
+      document.getElementById('typing-feedback').textContent = 'Sonuç: ' + typingCorrect + ' kelime/dk! +' + pts + ' puan';
+      document.getElementById('typing-feedback').className = 'feedback good';
+    }
+  }, 1000);
+}
+
+document.getElementById('typing-input').addEventListener('input', function () {
+  if (!typingActive) return;
+  const val = this.value.trim();
+  const target = typingWords[typingIdx % typingWords.length];
+  if (val === target) {
+    typingCorrect++; typingTotal++; typingStreak++;
+    const elapsed = 60 - typingLeft || 1;
+    document.getElementById('typing-wpm').textContent = Math.round(typingCorrect / elapsed * 60);
+    document.getElementById('typing-streak').textContent = typingStreak;
+    document.getElementById('typing-acc').textContent = Math.round(typingCorrect / typingTotal * 100) + '%';
+    document.getElementById('typing-feedback').textContent = '✓ +1';
+    document.getElementById('typing-feedback').className = 'feedback good';
+    typingIdx++;
+    document.getElementById('typing-word').textContent = typingWords[typingIdx % typingWords.length];
+    this.value = '';
+  } else if (val.length > 0 && !target.startsWith(val)) {
+    typingStreak = 0;
+    document.getElementById('typing-streak').textContent = 0;
+    document.getElementById('typing-feedback').textContent = 'hata!';
+    document.getElementById('typing-feedback').className = 'feedback bad';
+    if (val.length > target.length) { typingTotal++; this.value = ''; }
+  }
+});
+
+// ====== QUIZ ======
+const quizData = [
+  { q: 'Türkiye\'nin başkenti neresidir?', opts: ['İstanbul', 'Ankara', 'İzmir', 'Bursa'], ans: 1 },
+  { q: 'Dünyanın en büyük okyanusu?', opts: ['Atlantik', 'Hint', 'Arktik', 'Pasifik'], ans: 3 },
+  { q: 'Bir yılda kaç ay vardır?', opts: ['10', '11', '12', '13'], ans: 2 },
+  { q: 'Dünya\'nın uydusu nedir?', opts: ['Mars', 'Güneş', 'Ay', 'Venüs'], ans: 2 },
+  { q: 'Su\'nun kimyasal formülü?', opts: ['CO2', 'H2O', 'O2', 'NaCl'], ans: 1 },
+  { q: 'En büyük gezegen hangisi?', opts: ['Satürn', 'Jüpiter', 'Neptün', 'Uranüs'], ans: 1 },
+  { q: 'Türkiye kaç kıtada yer alır?', opts: ['1', '2', '3', '4'], ans: 1 },
+  { q: 'En hızlı kara hayvanı?', opts: ['Aslan', 'Çita', 'Leopar', 'Kaplan'], ans: 1 },
+  { q: 'Piyano kaç tuşa sahiptir?', opts: ['72', '76', '88', '96'], ans: 2 },
+  { q: 'Güneş sistemi kaç gezegenlidir?', opts: ['7', '8', '9', '10'], ans: 1 },
+];
+
+let quizIdx = 0, quizScore = 0, quizTimer, quizActive = false, quizTimeLeft = 15;
+
+function resetQuiz() {
+  clearInterval(quizTimer);
+  quizIdx = 0; quizScore = 0; quizActive = false;
+  document.getElementById('quiz-score').textContent = 0;
+  document.getElementById('quiz-q').textContent = '1/10';
+  document.getElementById('quiz-question').textContent = 'Oyunu başlatmak için butona bas';
+  document.getElementById('quiz-options').innerHTML = '';
+  document.getElementById('quiz-feedback').textContent = '';
+  document.getElementById('quiz-feedback').className = 'feedback';
+  document.getElementById('quiz-timer').style.width = '100%';
+}
+
+function startQuiz() { resetQuiz(); quizActive = true; showQuestion(); }
+
+function showQuestion() {
+  if (quizIdx >= quizData.length) {
+    document.getElementById('quiz-question').textContent = 'OYUN BİTTİ!';
+    document.getElementById('quiz-options').innerHTML = '';
+    const pts = quizScore * 10;
+    addScore(pts);
+    document.getElementById('quiz-feedback').textContent = quizScore + '/10 doğru! +' + pts + ' puan';
+    document.getElementById('quiz-feedback').className = 'feedback good';
+    return;
+  }
+  const q = quizData[quizIdx];
+  document.getElementById('quiz-q').textContent = (quizIdx + 1) + '/10';
+  document.getElementById('quiz-question').textContent = q.q;
+  document.getElementById('quiz-feedback').textContent = '';
+  document.getElementById('quiz-feedback').className = 'feedback';
+  quizTimeLeft = 15;
+  document.getElementById('quiz-timer').style.width = '100%';
+  clearInterval(quizTimer);
+  quizTimer = setInterval(() => {
+    quizTimeLeft--;
+    document.getElementById('quiz-timer').style.width = (quizTimeLeft / 15 * 100) + '%';
+    if (quizTimeLeft <= 0) { clearInterval(quizTimer); lockOptions(-1); }
+  }, 1000);
+  const opts = document.getElementById('quiz-options');
+  opts.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const b = document.createElement('button');
+    b.className = 'quiz-opt';
+    b.textContent = opt;
+    b.onclick = () => { clearInterval(quizTimer); lockOptions(i); };
+    opts.appendChild(b);
+  });
+}
+
+function lockOptions(chosen) {
+  const q = quizData[quizIdx];
+  document.querySelectorAll('.quiz-opt').forEach((b, i) => {
+    b.onclick = null;
+    if (i === q.ans) b.classList.add('correct');
+    else if (i === chosen) b.classList.add('wrong');
+  });
+  if (chosen === q.ans) {
+    quizScore++;
+    document.getElementById('quiz-score').textContent = quizScore;
+    document.getElementById('quiz-feedback').textContent = '✓ Doğru!';
+    document.getElementById('quiz-feedback').className = 'feedback good';
+  } else {
+    document.getElementById('quiz-feedback').textContent = '✗ Yanlış!';
+    document.getElementById('quiz-feedback').className = 'feedback bad';
+  }
+  quizIdx++;
+  setTimeout(showQuestion, 1300);
+}
+
+// ====== REACTION ======
+let rxnState = 'idle', rxnStart, rxnTimeout2, rxnTimes = [], rxnBest = null;
+
+function resetReaction() {
+  rxnState = 'idle'; rxnTimes = []; rxnBest = null;
+  const btn = document.getElementById('reaction-btn');
+  btn.className = '';
+  btn.innerHTML = 'TIKLA VE<br>BAŞLA';
+  document.getElementById('rxn-last').textContent = '-';
+  document.getElementById('rxn-best').textContent = '-';
+  document.getElementById('rxn-avg').textContent = '-';
+  document.getElementById('rxn-feedback').textContent = '';
+  document.getElementById('rxn-feedback').className = 'feedback';
+}
+
+function handleReaction() {
+  const btn = document.getElementById('reaction-btn');
+  if (rxnState === 'idle' || rxnState === 'result') {
+    rxnState = 'waiting';
+    btn.className = '';
+    btn.innerHTML = 'BEKLİYOR...';
+    document.getElementById('rxn-feedback').textContent = 'Renk değişince hemen tıkla!';
+    rxnTimeout2 = setTimeout(() => {
+      rxnState = 'ready';
+      btn.className = 'ready';
+      btn.innerHTML = 'TIKLA!';
+      rxnStart = Date.now();
+    }, 1500 + Math.random() * 3000);
+  } else if (rxnState === 'waiting') {
+    clearTimeout(rxnTimeout2);
+    rxnState = 'result';
+    btn.className = 'early';
+    btn.innerHTML = 'ÇOK ERKEN!<br>TEKRAR';
+    document.getElementById('rxn-feedback').textContent = 'Beklemeden tıkladın!';
+    document.getElementById('rxn-feedback').className = 'feedback bad';
+  } else if (rxnState === 'ready') {
+    const ms = Date.now() - rxnStart;
+    rxnTimes.push(ms);
+    if (!rxnBest || ms < rxnBest) rxnBest = ms;
+    const avg = Math.round(rxnTimes.reduce((a, b) => a + b, 0) / rxnTimes.length);
+    document.getElementById('rxn-last').textContent = ms;
+    document.getElementById('rxn-best').textContent = rxnBest;
+    document.getElementById('rxn-avg').textContent = avg;
+    const msg = ms < 150 ? 'İNANILMAZ! 🏆' : ms < 200 ? 'SÜPER HIZLI! ⚡' : ms < 300 ? 'Çok iyi! 👍' : ms < 500 ? 'Fena değil!' : 'Biraz yavaş...';
+    document.getElementById('rxn-feedback').textContent = msg + ' (' + ms + 'ms)';
+    document.getElementById('rxn-feedback').className = 'feedback good';
+    addScore(Math.max(0, Math.round((500 - ms) / 5)));
+    rxnState = 'result';
+    btn.className = '';
+    btn.innerHTML = 'TEKRAR<br>TIKLA';
+  }
+}
+
+// ====== MATH ======
+let mathScore = 0, mathStreak = 0, mathLevel = 1, mathTimerInterval, mathActive = false, mathLeft = 10, mathAns;
+
+function resetMath() {
+  clearInterval(mathTimerInterval);
+  mathScore = 0; mathStreak = 0; mathLevel = 1; mathActive = false;
+  document.getElementById('math-score').textContent = 0;
+  document.getElementById('math-streak').textContent = 0;
+  document.getElementById('math-level').textContent = 1;
+  document.getElementById('math-display').textContent = '? ? ?';
+  document.getElementById('math-input').value = '';
+  document.getElementById('math-feedback').textContent = '';
+  document.getElementById('math-feedback').className = 'feedback';
+  document.getElementById('math-timer').style.width = '100%';
+}
+
+function startMath() { resetMath(); mathActive = true; nextMath(); }
+
+function nextMath() {
+  clearInterval(mathTimerInterval);
+  mathLeft = 10;
+  document.getElementById('math-timer').style.width = '100%';
+  const ops = ['+', '-', '×'];
+  const maxNum = 5 + mathLevel * 5;
+  let a = Math.floor(Math.random() * maxNum) + 1, b = Math.floor(Math.random() * maxNum) + 1;
+  const op = ops[Math.floor(Math.random() * (mathLevel >= 3 ? 3 : 2))];
+  if (op === '-' && a < b) { let t = a; a = b; b = t; }
+  mathAns = op === '+' ? a + b : op === '-' ? a - b : a * b;
+  document.getElementById('math-display').textContent = a + ' ' + op + ' ' + b + ' = ?';
+  document.getElementById('math-input').value = '';
+  document.getElementById('math-input').focus();
+  mathTimerInterval = setInterval(() => {
+    mathLeft -= 0.1;
+    document.getElementById('math-timer').style.width = (Math.max(0, mathLeft) / 10 * 100) + '%';
+    if (mathLeft <= 0) { clearInterval(mathTimerInterval); checkMath(true); }
+  }, 100);
+}
+
+document.getElementById('math-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && mathActive) checkMath(false);
+});
+
+function checkMath(timeout) {
+  if (!mathActive) return;
+  clearInterval(mathTimerInterval);
+  const val = parseInt(document.getElementById('math-input').value);
+  if (!timeout && val === mathAns) {
+    const pts = mathLevel * 10;
+    mathScore += pts; mathStreak++;
+    if (mathStreak % 3 === 0) mathLevel = Math.min(5, mathLevel + 1);
+    document.getElementById('math-score').textContent = mathScore;
+    document.getElementById('math-streak').textContent = mathStreak;
+    document.getElementById('math-level').textContent = mathLevel;
+    document.getElementById('math-feedback').textContent = '✓ Doğru! +' + pts;
+    document.getElementById('math-feedback').className = 'feedback good';
+    addScore(pts);
+    setTimeout(nextMath, 500);
+  } else {
+    mathStreak = 0;
+    mathLevel = Math.max(1, mathLevel - 1);
+    document.getElementById('math-streak').textContent = 0;
+    document.getElementById('math-level').textContent = mathLevel;
+    document.getElementById('math-feedback').textContent = timeout ? '⏱ Süre doldu! Cevap: ' + mathAns : '✗ Yanlış! Cevap: ' + mathAns;
+    document.getElementById('math-feedback').className = 'feedback bad';
+    setTimeout(nextMath, 900);
+  }
+}
+</script>
+</body>
+</html>

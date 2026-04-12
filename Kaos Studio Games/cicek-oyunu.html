@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Çiçek Bahçem – 8 Mart</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,600;1,300;1,600&family=Nunito:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sky: #fef3e8;
+  --soil: #8B5E3C;
+  --soil-dark: #5c3d20;
+  --green: #4a9e6b;
+  --green2: #2d7a4f;
+  --pink: #f06292;
+  --rose: #e91e63;
+  --yellow: #fdd835;
+  --lavender: #9575cd;
+  --orange: #ff7043;
+  --white: #fff8f0;
+  --text: #3b2a1a;
+  --sun: #ffca28;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--sky);
+  min-height: 100vh;
+  overflow: hidden;
+  color: var(--text);
+  cursor: none;
+}
+
+/* Custom cursor */
+#cursor {
+  position: fixed; z-index: 9999;
+  width: 28px; height: 28px;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  font-size: 22px;
+  transition: transform 0.08s;
+}
+
+/* SKY */
+#sky {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 55%;
+  background: linear-gradient(180deg, #ffe0b2 0%, #fff3e0 40%, #fef9f0 100%);
+  z-index: 0;
+}
+
+/* Sun */
+.sun {
+  position: absolute;
+  top: 18px; right: 80px;
+  width: 70px; height: 70px;
+  background: radial-gradient(circle, #fff176, #ffca28);
+  border-radius: 50%;
+  box-shadow: 0 0 40px 12px rgba(255,202,40,0.4);
+  animation: sunPulse 4s ease-in-out infinite;
+}
+@keyframes sunPulse {
+  0%,100%{box-shadow:0 0 40px 12px rgba(255,202,40,0.4)}
+  50%{box-shadow:0 0 60px 20px rgba(255,202,40,0.6)}
+}
+
+/* CLOUDS */
+.cloud {
+  position: absolute;
+  background: white;
+  border-radius: 50px;
+  opacity: 0.85;
+  animation: drift linear infinite;
+}
+.cloud::before,.cloud::after {
+  content:'';position:absolute;
+  background:white;border-radius:50%;
+}
+@keyframes drift { from{transform:translateX(-200px)} to{transform:translateX(110vw)} }
+
+/* GRASS */
+#grass {
+  position: fixed;
+  bottom: 110px; left: 0; right: 0;
+  height: 80px;
+  background: linear-gradient(180deg, #66bb6a 0%, #43a047 100%);
+  z-index: 1;
+  border-radius: 0 0 0 0;
+}
+#grass::before {
+  content: '';
+  position: absolute;
+  top: -18px; left: 0; right: 0; height: 22px;
+  background: radial-gradient(ellipse 10px 22px at 50% 100%, #66bb6a 60%, transparent 100%);
+  background-size: 22px 22px;
+  background-repeat: repeat-x;
+}
+
+/* SOIL */
+#soil {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 115px;
+  background: linear-gradient(180deg, #8d6e63 0%, #5d4037 100%);
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 20px;
+  padding: 0 20px;
+}
+
+/* GARDEN PLOTS */
+.plot {
+  width: 80px;
+  height: 50px;
+  background: linear-gradient(180deg, #a1887f 0%, #6d4c41 100%);
+  border-radius: 8px 8px 4px 4px;
+  border: 2px solid #4e342e;
+  position: relative;
+  margin-top: 12px;
+  cursor: none;
+  transition: transform 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.plot:hover { transform: scale(1.05); }
+.plot-label {
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.5);
+  position: absolute;
+  bottom: 4px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.plot-seed-icon {
+  font-size: 1.4rem;
+}
+
+/* FLOWER on plot */
+.flower-on-plot {
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* STEM */
+.stem {
+  width: 4px;
+  background: linear-gradient(180deg, #4caf50, #2e7d32);
+  border-radius: 2px;
+  transition: height 0.4s ease;
+}
+
+/* LEAVES */
+.leaf-left, .leaf-right {
+  position: absolute;
+  width: 16px; height: 10px;
+  border-radius: 50% 0 50% 0;
+  background: #66bb6a;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.leaf-left { left: -14px; transform: rotate(-30deg); }
+.leaf-right { right: -14px; transform: rotate(30deg) scaleX(-1); }
+
+/* BLOOM */
+.bloom {
+  position: absolute;
+  top: -28px;
+  font-size: 2.2rem;
+  animation: bloomBounce 0.4s ease;
+  opacity: 0;
+  transition: opacity 0.3s, font-size 0.3s;
+}
+@keyframes bloomBounce {
+  0%{transform:scale(0) rotate(-20deg)} 70%{transform:scale(1.2) rotate(5deg)} 100%{transform:scale(1) rotate(0)}
+}
+
+/* UI PANEL */
+#ui {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: rgba(255,248,240,0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1.5px solid rgba(240,98,146,0.2);
+}
+
+.ui-title {
+  font-family: 'Fraunces', serif;
+  font-size: 1.1rem;
+  color: var(--rose);
+  font-weight: 600;
+}
+.ui-title span { font-style: italic; font-weight: 300; color: var(--text); }
+
+.ui-stats {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: white;
+  border: 1.5px solid rgba(240,98,146,0.2);
+  border-radius: 99px;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.stat-chip .icon { font-size: 1rem; }
+
+/* SHOP PANEL */
+#shop {
+  position: fixed;
+  right: 16px;
+  top: 70px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shop-item {
+  background: white;
+  border: 2px solid rgba(240,98,146,0.25);
+  border-radius: 14px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: none;
+  transition: all 0.15s;
+  min-width: 170px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+}
+.shop-item:hover { transform: translateX(-3px); border-color: var(--pink); box-shadow: 0 4px 16px rgba(240,98,146,0.2); }
+.shop-item.locked { opacity: 0.45; }
+.shop-icon { font-size: 1.5rem; }
+.shop-info { flex: 1; }
+.shop-name { font-size: 0.78rem; font-weight: 600; color: var(--text); }
+.shop-desc { font-size: 0.65rem; color: #888; }
+.shop-cost {
+  font-size: 0.8rem; font-weight: 600;
+  color: var(--green2);
+  display: flex; align-items: center; gap: 2px;
+}
+
+/* SEEDS (clickable big button) */
+#seedBtn {
+  position: fixed;
+  bottom: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  background: linear-gradient(135deg, #f48fb1, #e91e63);
+  border: none;
+  border-radius: 99px;
+  padding: 14px 36px;
+  font-family: 'Fraunces', serif;
+  font-size: 1.15rem;
+  font-style: italic;
+  color: white;
+  cursor: none;
+  box-shadow: 0 6px 24px rgba(233,30,99,0.35);
+  transition: transform 0.1s, box-shadow 0.1s;
+  white-space: nowrap;
+}
+#seedBtn:active { transform: translateX(-50%) scale(0.95); box-shadow: 0 2px 10px rgba(233,30,99,0.3); }
+
+/* FLOATING TEXT */
+.float-text {
+  position: fixed;
+  font-family: 'Fraunces', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--rose);
+  pointer-events: none;
+  z-index: 200;
+  animation: floatUp 1s ease forwards;
+}
+@keyframes floatUp {
+  0%{opacity:1;transform:translateY(0) scale(1)}
+  100%{opacity:0;transform:translateY(-60px) scale(0.8)}
+}
+
+/* MILESTONE banner */
+#milestone {
+  position: fixed;
+  top: 60px; left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  z-index: 100;
+  background: linear-gradient(135deg, #e91e63, #9c27b0);
+  color: white;
+  padding: 12px 28px;
+  border-radius: 99px;
+  font-family: 'Fraunces', serif;
+  font-size: 1rem;
+  font-style: italic;
+  box-shadow: 0 8px 24px rgba(233,30,99,0.4);
+  transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  white-space: nowrap;
+}
+#milestone.show { transform: translateX(-50%) translateY(0); }
+
+/* WATER RIPPLE */
+.ripple {
+  position: fixed;
+  border-radius: 50%;
+  border: 2px solid rgba(240,98,146,0.5);
+  pointer-events: none;
+  z-index: 199;
+  animation: rippleOut 0.5s ease forwards;
+}
+@keyframes rippleOut {
+  0%{width:10px;height:10px;opacity:0.8;margin:-5px}
+  100%{width:60px;height:60px;opacity:0;margin:-30px}
+}
+
+/* PROGRESS BAR under each plot */
+.growth-bar {
+  position: absolute;
+  bottom: -8px;
+  left: 4px; right: 4px;
+  height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.growth-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #a5d6a7, #66bb6a);
+  border-radius: 99px;
+  transition: width 0.3s;
+}
+
+/* Tooltip */
+.tooltip {
+  position: absolute;
+  top: -30px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(40,20,10,0.85);
+  color: white;
+  font-size: 0.65rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.plot:hover .tooltip { opacity: 1; }
+
+/* CELEBRATION particles */
+.spark {
+  position: fixed;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 200;
+  animation: sparkFly var(--dur) ease forwards;
+}
+@keyframes sparkFly {
+  0%{transform:translate(0,0) scale(1);opacity:1}
+  100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}
+}
+
+/* 8 Mart badge top-left */
+.march-badge {
+  font-size: 0.7rem;
+  background: linear-gradient(135deg, #e91e63, #ff7043);
+  color: white;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* Mobile */
+@media(max-width:600px){
+  #shop{right:8px;top:64px;}
+  .shop-item{min-width:140px;padding:6px 9px;}
+  .plot{width:60px;height:40px;}
+  #seedBtn{padding:11px 26px;font-size:1rem;}
+}
+</style>
+</head>
+<body>
+
+<div id="cursor">🌱</div>
+
+<div id="sky">
+  <div class="sun"></div>
+</div>
+
+<div id="grass"></div>
+<div id="soil" id="plotArea"></div>
+
+<!-- UI Bar -->
+<div id="ui">
+  <div>
+    <div class="ui-title">Çiçek Bahçem <span>✿</span></div>
+    <div class="march-badge">8 Mart Dünya Kadınlar Günü</div>
+  </div>
+  <div class="ui-stats">
+    <div class="stat-chip"><span class="icon">💧</span><span id="waterCount">0</span> su</div>
+    <div class="stat-chip"><span class="icon">🌸</span><span id="flowerCount">0</span> çiçek</div>
+    <div class="stat-chip"><span class="icon">✨</span><span id="magicCount">0</span> sihir</div>
+  </div>
+</div>
+
+<!-- Shop -->
+<div id="shop">
+  <div class="shop-item" id="buyPlot" onclick="buyPlot()">
+    <div class="shop-icon">🪴</div>
+    <div class="shop-info">
+      <div class="shop-name">Yeni Saksı</div>
+      <div class="shop-desc">+1 çiçek yuvası</div>
+    </div>
+    <div class="shop-cost">💧<span id="plotCost">15</span></div>
+  </div>
+  <div class="shop-item locked" id="buyWater" onclick="buyAutoWater()">
+    <div class="shop-icon">🚿</div>
+    <div class="shop-info">
+      <div class="shop-name">Otomatik Sulama</div>
+      <div class="shop-desc">Her 3sn su kazanırsın</div>
+    </div>
+    <div class="shop-cost">💧<span id="waterCost">30</span></div>
+  </div>
+  <div class="shop-item locked" id="buyFert" onclick="buyFertilizer()">
+    <div class="shop-icon">⚡</div>
+    <div class="shop-info">
+      <div class="shop-name">Sihirli Gübre</div>
+      <div class="shop-desc">Çiçekler 2x hızlı büyür</div>
+    </div>
+    <div class="shop-cost">🌸<span id="fertCost">10</span></div>
+  </div>
+  <div class="shop-item locked" id="buySun" onclick="buySunshine()">
+    <div class="shop-icon">☀️</div>
+    <div class="shop-info">
+      <div class="shop-name">Ekstra Güneş</div>
+      <div class="shop-desc">Tıklama +3 su verir</div>
+    </div>
+    <div class="shop-cost">🌸<span id="sunCost">25</span></div>
+  </div>
+</div>
+
+<!-- Main Click Button -->
+<button id="seedBtn" onclick="waterClick(event)">💧 Sula!</button>
+
+<!-- Milestone -->
+<div id="milestone">🌸 Tebrikler!</div>
+
+<script>
+let water = 0, flowers = 0, magic = 0;
+let waterPerClick = 1;
+let autoWater = 0;
+let fertActive = false;
+let plotCostVal = 15;
+let waterCostVal = 30;
+let fertCostVal = 10;
+let sunCostVal = 25;
+let autoWaterCount = 0;
+let milestoneShown = {};
+
+const FLOWER_EMOJIS = ['🌸','🌺','🌹','🌷','🌼','💐','🌻','🪷','🌝'];
+const FLOWER_NAMES = ['Gül','Lale','Papatya','Menekşe','Zambak','Sümbül','Ayçiçeği','Orkide'];
+
+// Plots state
+let plots = [
+  { level: 0, progress: 0, flower: null, watered: 0 },
+  { level: 0, progress: 0, flower: null, watered: 0 },
+  { level: 0, progress: 0, flower: null, watered: 0 },
+];
+
+// DOM
+const soilEl = document.getElementById('soil');
+
+function renderPlots() {
+  soilEl.innerHTML = '';
+  plots.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'plot';
+    div.onclick = (e) => plotClick(e, i);
+
+    // tooltip
+    const tip = document.createElement('div');
+    tip.className = 'tooltip';
+    tip.textContent = p.flower ? `${p.flower.name} (${p.level}/5)` : 'Tıkla & sula!';
+    div.appendChild(tip);
+
+    // growth bar
+    const bar = document.createElement('div');
+    bar.className = 'growth-bar';
+    const fill = document.createElement('div');
+    fill.className = 'growth-fill';
+    fill.style.width = (p.progress / growthNeeded(p.level) * 100) + '%';
+    bar.appendChild(fill); div.appendChild(bar);
+
+    // flower on top of plot
+    if (p.flower) {
+      const fw = document.createElement('div');
+      fw.className = 'flower-on-plot';
+
+      // bloom
+      const bloom = document.createElement('div');
+      bloom.className = 'bloom';
+      bloom.style.opacity = p.level >= 2 ? '1' : '0';
+      bloom.style.fontSize = (1.5 + p.level * 0.3) + 'rem';
+      bloom.textContent = p.flower.emoji;
+      fw.appendChild(bloom);
+
+      // stem
+      const stem = document.createElement('div');
+      stem.className = 'stem';
+      const sh = 10 + p.level * 10;
+      stem.style.height = sh + 'px';
+      fw.appendChild(stem);
+
+      // leaves
+      if (p.level >= 1) {
+        const ll = document.createElement('div'); ll.className = 'leaf-left'; ll.style.opacity='1';
+        const lr = document.createElement('div'); lr.className = 'leaf-right'; lr.style.opacity='1';
+        stem.appendChild(ll); stem.appendChild(lr);
+      }
+
+      div.appendChild(fw);
+
+      // seed icon hidden if flower
+    } else {
+      const si = document.createElement('div');
+      si.className = 'plot-seed-icon';
+      si.textContent = '🌱';
+      div.appendChild(si);
+    }
+
+    const lbl = document.createElement('div');
+    lbl.className = 'plot-label';
+    lbl.textContent = p.flower ? p.flower.name : 'Boş';
+    div.appendChild(lbl);
+
+    soilEl.appendChild(div);
+  });
+}
+
+function growthNeeded(level) {
+  return fertActive ? [3,4,5,6,7][level] || 10 : [5,8,12,18,25][level] || 25;
+}
+
+function plotClick(e, i) {
+  e.stopPropagation();
+  const p = plots[i];
+  if (water <= 0) { floatText(e.clientX, e.clientY, '💧 Su yok!', '#888'); return; }
+
+  water -= 1;
+  p.watered++;
+
+  if (!p.flower) {
+    // plant seed
+    p.flower = { emoji: FLOWER_EMOJIS[Math.floor(Math.random()*FLOWER_EMOJIS.length)], name: FLOWER_NAMES[Math.floor(Math.random()*FLOWER_NAMES.length)] };
+    p.level = 0; p.progress = 0;
+    floatText(e.clientX, e.clientY, '🌱 Ekildi!', '#66bb6a');
+  } else {
+    p.progress++;
+    floatText(e.clientX, e.clientY, '💧+1', '#42a5f5');
+    if (p.progress >= growthNeeded(p.level)) {
+      p.progress = 0;
+      p.level++;
+      if (p.level >= 2) {
+        flowers++;
+        magic += Math.floor(p.level * 0.5);
+        floatText(e.clientX, e.clientY, p.flower.emoji + ' Büyüdü!', '#e91e63');
+        spawnSparks(e.clientX, e.clientY);
+      }
+      if (p.level >= 5) {
+        // fully grown — harvest
+        flowers += 3; magic += 2;
+        floatText(e.clientX, e.clientY, '🌸 Hasat! +3 çiçek', '#e91e63');
+        p.flower = null; p.level = 0; p.progress = 0;
+        checkMilestone();
+      }
+    }
+  }
+  ripple(e.clientX, e.clientY);
+  updateUI(); renderPlots();
+}
+
+function waterClick(e) {
+  water += waterPerClick;
+  floatText(e.clientX, e.clientY - 20, '+' + waterPerClick + ' 💧', '#42a5f5');
+  ripple(e.clientX, e.clientY);
+  updateUI();
+}
+
+function buyPlot() {
+  if (water < plotCostVal) { showMilestone('💧 Yeterli su yok!'); return; }
+  water -= plotCostVal;
+  plots.push({ level: 0, progress: 0, flower: null, watered: 0 });
+  plotCostVal = Math.ceil(plotCostVal * 1.8);
+  document.getElementById('plotCost').textContent = plotCostVal;
+  updateUI(); renderPlots();
+  showMilestone('🪴 Yeni saksı eklendi!');
+}
+
+function buyAutoWater() {
+  if (water < waterCostVal) { showMilestone('💧 Yeterli su yok!'); return; }
+  water -= waterCostVal;
+  autoWaterCount++;
+  waterCostVal = Math.ceil(waterCostVal * 2);
+  document.getElementById('waterCost').textContent = waterCostVal;
+  document.getElementById('buyWater').classList.remove('locked');
+  updateUI();
+  showMilestone('🚿 Otomatik sulama aktif!');
+}
+
+function buyFertilizer() {
+  if (flowers < fertCostVal) { showMilestone('🌸 Yeterli çiçek yok!'); return; }
+  flowers -= fertCostVal;
+  fertActive = true;
+  fertCostVal = Math.ceil(fertCostVal * 2.5);
+  document.getElementById('fertCost').textContent = fertCostVal;
+  document.getElementById('buyFert').classList.remove('locked');
+  updateUI();
+  showMilestone('⚡ Sihirli gübre aktif!');
+}
+
+function buySunshine() {
+  if (flowers < sunCostVal) { showMilestone('🌸 Yeterli çiçek yok!'); return; }
+  flowers -= sunCostVal;
+  waterPerClick += 3;
+  sunCostVal = Math.ceil(sunCostVal * 2);
+  document.getElementById('sunCost').textContent = sunCostVal;
+  document.getElementById('buySun').classList.remove('locked');
+  updateUI();
+  showMilestone('☀️ Tıklama başına +3 su!');
+}
+
+// Auto-water interval
+setInterval(() => {
+  if (autoWaterCount > 0) {
+    water += autoWaterCount;
+    updateUI();
+  }
+  // Also slowly progress all watered plots
+  let changed = false;
+  plots.forEach(p => {
+    if (p.flower && autoWaterCount > 0) {
+      p.progress += autoWaterCount * 0.3;
+      if (p.progress >= growthNeeded(p.level)) {
+        p.progress = 0; p.level++;
+        if (p.level >= 2) { flowers++; }
+        if (p.level >= 5) { flowers += 3; magic += 2; p.flower = null; p.level = 0; p.progress = 0; checkMilestone(); }
+      }
+      changed = true;
+    }
+  });
+  if (changed) { updateUI(); renderPlots(); }
+}, 3000);
+
+function checkMilestone() {
+  const milestones = [[5,'🌷 5 çiçek! Harika!'],[15,'🌺 15 çiçek! Muhteşem!'],[30,'💐 30 çiçek! Efsane bahçe!'],[50,'🌹 50 çiçek! Sen bir bahçıvan ustasısın!']];
+  milestones.forEach(([n, msg]) => {
+    if (flowers >= n && !milestoneShown[n]) { milestoneShown[n] = true; showMilestone(msg); }
+  });
+}
+
+function updateUI() {
+  document.getElementById('waterCount').textContent = Math.floor(water);
+  document.getElementById('flowerCount').textContent = flowers;
+  document.getElementById('magicCount').textContent = magic;
+  // unlock shop items
+  if (water >= 30) document.getElementById('buyWater').classList.remove('locked');
+  if (flowers >= 10) document.getElementById('buyFert').classList.remove('locked');
+  if (flowers >= 25) document.getElementById('buySun').classList.remove('locked');
+  checkMilestone();
+}
+
+function floatText(x, y, text, color) {
+  const el = document.createElement('div');
+  el.className = 'float-text';
+  el.style.left = (x - 20) + 'px';
+  el.style.top = (y - 10) + 'px';
+  el.style.color = color || '#e91e63';
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+
+function ripple(x, y) {
+  const el = document.createElement('div');
+  el.className = 'ripple';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 500);
+}
+
+function spawnSparks(x, y) {
+  const colors = ['#f06292','#ffca28','#66bb6a','#9575cd','#ff7043'];
+  for (let i = 0; i < 10; i++) {
+    const s = document.createElement('div');
+    s.className = 'spark';
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 40 + Math.random() * 60;
+    s.style.cssText = `
+      left:${x}px; top:${y}px;
+      background:${colors[i%colors.length]};
+      --dx:${Math.cos(angle)*dist}px;
+      --dy:${Math.sin(angle)*dist}px;
+      --dur:${0.4+Math.random()*0.4}s;
+    `;
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 900);
+  }
+}
+
+let milestoneTimer;
+function showMilestone(msg) {
+  const el = document.getElementById('milestone');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(milestoneTimer);
+  milestoneTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// Custom cursor
+document.addEventListener('mousemove', e => {
+  const c = document.getElementById('cursor');
+  c.style.left = e.clientX + 'px';
+  c.style.top = e.clientY + 'px';
+});
+
+// Clouds
+function makeClouds() {
+  const sky = document.getElementById('sky');
+  for (let i = 0; i < 4; i++) {
+    const c = document.createElement('div');
+    c.className = 'cloud';
+    const w = 80 + Math.random() * 100;
+    c.style.cssText = `
+      width:${w}px; height:${w*0.4}px;
+      top:${15 + Math.random()*30}%;
+      left:${Math.random()*100}%;
+      animation-duration:${30+Math.random()*30}s;
+      animation-delay:${-Math.random()*30}s;
+    `;
+    c.style.setProperty('--w', w + 'px');
+    c.before;
+    sky.appendChild(c);
+  }
+}
+makeClouds();
+
+// Init
+renderPlots();
+updateUI();
+
+// Welcome
+setTimeout(() => showMilestone('🌸 8 Mart Kadınlar Günü kutlu olsun! Bahçeni büyüt!'), 600);
+</script>
+</body>
+</html>

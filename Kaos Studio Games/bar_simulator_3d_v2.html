@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍸 Bar Simulator 3D</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0d0a0e;color:#f0e8d8;font-family:'DM Sans',sans-serif;overflow:hidden;height:100vh;width:100vw;}
+#c{display:block;width:100%;height:100%;}
+
+#hud{position:absolute;top:0;left:0;right:0;pointer-events:none;z-index:10;}
+#topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:linear-gradient(to bottom,rgba(13,10,14,.95),transparent);}
+#title{font-family:'Playfair Display',serif;font-size:22px;color:#c9a84c;letter-spacing:2px;}
+#stats{display:flex;gap:12px;}
+.sb{background:rgba(36,27,46,.9);border:1px solid rgba(201,168,76,.25);border-radius:10px;padding:6px 14px;text-align:center;}
+.sv{font-size:20px;font-weight:500;color:#c9a84c;display:block;}
+.sl{font-size:10px;color:#9a8878;text-transform:uppercase;letter-spacing:1px;}
+
+#crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px;pointer-events:none;z-index:5;}
+#crosshair::before,#crosshair::after{content:'';position:absolute;background:rgba(255,255,255,.6);}
+#crosshair::before{width:2px;height:20px;left:9px;top:0;}
+#crosshair::after{width:20px;height:2px;top:9px;left:0;}
+
+#interact-hint{position:absolute;top:55%;left:50%;transform:translateX(-50%);background:rgba(13,10,14,.85);border:1px solid #c9a84c;border-radius:20px;padding:7px 18px;font-size:13px;color:#c9a84c;pointer-events:none;z-index:10;opacity:0;transition:opacity .2s;}
+
+#dialog{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(13,10,14,.98) 80%,transparent);padding:14px 20px 18px;z-index:10;display:none;}
+#dname{font-family:'Playfair Display',serif;font-size:18px;color:#c9a84c;margin-bottom:4px;}
+#dmood{font-size:12px;color:#9a8878;margin-bottom:8px;}
+#dmood-bar{height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;width:180px;margin-bottom:10px;}
+#dmood-fill{height:100%;border-radius:3px;transition:width .4s,background .4s;}
+#dfriend-bar{height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;width:180px;margin-bottom:12px;}
+#dfriend-fill{height:100%;background:#7c5cbf;border-radius:3px;transition:width .4s;}
+#dactions{display:flex;gap:7px;flex-wrap:wrap;}
+.dab{background:rgba(36,27,46,.9);border:1px solid rgba(201,168,76,.3);color:#f0e8d8;border-radius:20px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;pointer-events:all;}
+.dab:hover{background:rgba(201,168,76,.15);border-color:#c9a84c;color:#c9a84c;transform:translateY(-2px);}
+.dab.flirt{border-color:#e8567a;color:#e8567a;}
+.dab.flirt:hover{background:rgba(232,86,122,.15);}
+#dclose{position:absolute;top:14px;right:20px;background:none;border:none;color:#9a8878;font-size:18px;cursor:pointer;pointer-events:all;}
+
+#log{position:absolute;top:70px;left:14px;width:230px;z-index:10;pointer-events:none;}
+.li{background:rgba(13,10,14,.88);border-left:2px solid #c9a84c;padding:5px 9px;font-size:11px;color:#9a8878;margin-bottom:3px;border-radius:0 6px 6px 0;animation:sli .3s ease;}
+@keyframes sli{from{opacity:0;transform:translateX(-16px);}to{opacity:1;transform:translateX(0);}}
+
+#toast{position:absolute;top:70px;left:50%;transform:translateX(-50%);background:rgba(36,27,46,.97);border:1px solid #c9a84c;border-radius:20px;padding:9px 20px;font-size:13px;color:#c9a84c;z-index:20;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;}
+
+#controls-hint{position:absolute;bottom:20px;right:20px;background:rgba(13,10,14,.8);border:1px solid rgba(201,168,76,.2);border-radius:10px;padding:10px 14px;font-size:11px;color:#9a8878;z-index:10;pointer-events:none;line-height:1.8;}
+#controls-hint b{color:#c9a84c;}
+
+#flirt-meter{position:absolute;top:70px;right:14px;background:rgba(36,27,46,.9);border:1px solid rgba(232,86,122,.3);border-radius:12px;padding:10px 14px;z-index:10;pointer-events:none;display:none;}
+#fm-title{font-size:11px;color:#e8567a;margin-bottom:6px;}
+#fm-bar{height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;width:120px;}
+#fm-fill{height:100%;background:linear-gradient(to right,#e8567a,#ff88aa);border-radius:4px;transition:width .4s;}
+#fm-label{font-size:11px;color:#9a8878;margin-top:4px;}
+
+#night-ov{position:absolute;inset:0;background:rgba(13,10,14,.9);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;opacity:0;pointer-events:none;transition:opacity .5s;}
+#night-ov.show{opacity:1;pointer-events:all;}
+#nt{font-family:'Playfair Display',serif;font-size:40px;color:#c9a84c;text-align:center;}
+#nsub{font-size:15px;color:#9a8878;}
+#nbtn{background:#c9a84c;color:#0d0a0e;border:none;padding:12px 32px;border-radius:30px;font-size:15px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
+#nbtn:hover{background:#f0d080;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div id="topbar">
+    <div id="title">🍸 BAR ROUGE</div>
+    <div id="stats">
+      <div class="sb"><span class="sv" id="sc">0</span><span class="sl">Charm</span></div>
+      <div class="sb"><span class="sv" id="sf">0</span><span class="sl">Arkadaş</span></div>
+      <div class="sb"><span class="sv" id="sn">1</span><span class="sl">Gece</span></div>
+    </div>
+  </div>
+</div>
+<div id="crosshair"></div>
+<div id="interact-hint" id="ihint">E — Konuş</div>
+<div id="flirt-meter">
+  <div id="fm-title">💕 Flört Seviyesi</div>
+  <div id="fm-bar"><div id="fm-fill" style="width:0%"></div></div>
+  <div id="fm-label" id="fmlabel">—</div>
+</div>
+<div id="log"></div>
+<div id="toast"></div>
+
+<div id="dialog">
+  <button id="dclose" onclick="closeDialog()">✕</button>
+  <div id="dname">—</div>
+  <div id="dmood">Ruh hali: <span id="dmoodtxt">—</span> &nbsp;|&nbsp; Arkadaşlık: <span id="dfriendtxt">—</span></div>
+  <div id="dmood-bar"><div id="dmood-fill"></div></div>
+  <div id="dfriend-bar"><div id="dfriend-fill"></div></div>
+  <div id="dactions"></div>
+</div>
+
+<div id="controls-hint">
+  <b>WASD</b> — Hareket<br>
+  <b>Mouse</b> — Bak<br>
+  <b>E</b> — Konuş<br>
+  <b>ESC</b> — Kapat<br>
+  <b>N</b> — Yeni Gece
+</div>
+
+<div id="night-ov" id="nightov">
+  <div id="nt">🌙 Gece <span id="nn">2</span></div>
+  <div id="nsub">Yeni yüzler, yeni fırsatlar...</div>
+  <button id="nbtn" onclick="startNight()">Barı Aç</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ===== CONFIG =====
+const MOVE_SPEED = 0.06;
+const INTERACT_DIST = 2.8;
+
+// ===== GUEST DATA =====
+const GTYPES = [
+  {name:"Zeynep",emoji:"👩",type:"girl",bodyCol:0xc94070,hairCol:0x1a0a00,skin:0xffe0bd,personality:"Çekingen ama meraklı"},
+  {name:"Ayşe",  emoji:"💁‍♀️",type:"girl",bodyCol:0x9040b0,hairCol:0x4a1a00,skin:0xf1c27d,personality:"Neşeli ve sosyal"},
+  {name:"Selin", emoji:"🧕",type:"girl",bodyCol:0xb05030,hairCol:0x1a1a1a,skin:0xe0ac69,personality:"Zeki ve analitik"},
+  {name:"Cansu", emoji:"💃",type:"girl",bodyCol:0xd44090,hairCol:0x2c1806,skin:0xc68642,personality:"Enerjik ve eğlenceli"},
+  {name:"Deniz", emoji:"🧑",type:"guy", bodyCol:0x336699,hairCol:0x1a1a1a,skin:0xffe0bd,personality:"Rahat ve cool"},
+  {name:"Mert",  emoji:"👨",type:"guy", bodyCol:0x338899,hairCol:0x2c1806,skin:0xf1c27d,personality:"Rekabetçi ve gururlu"},
+  {name:"Burak", emoji:"🕺",type:"guy", bodyCol:0x5533aa,hairCol:0x1a1a1a,skin:0xe0ac69,personality:"Esprili ve şakacı"},
+  {name:"Emre",  emoji:"🧔",type:"guy", bodyCol:0x446644,hairCol:0x4a3000,skin:0xc68642,personality:"Gizemli ve sessiz"},
+];
+
+const ACTIONS = [
+  {label:"😄 Şaka yap",       charm:2,mood:12,friend:8, flirt:0, sr:.55, w:n=>`${n} güldü!`,          l:"Şaka tutmadı..."},
+  {label:"💬 Sohbet et",      charm:1,mood:8, friend:10,flirt:0, sr:.75, w:n=>`${n} ile muhabbet!`,    l:"Konuşmak istemedi."},
+  {label:"🍹 İçecek ısmarla", charm:3,mood:18,friend:15,flirt:5, sr:.70, w:n=>`${n} içeceği aldı!`,   l:"Teklifi reddetti."},
+  {label:"🎵 Dans et",        charm:4,mood:22,friend:18,flirt:8, sr:.45, w:n=>`${n} ile dans!`,        l:"Dansı reddetti."},
+  {label:"🌟 İltifat et",     charm:2,mood:15,friend:12,flirt:10,sr:.60, w:n=>`${n} kızardı!`,        l:"İltifat ters tepti."},
+  {label:"💕 Flört et",       charm:0,mood:5, friend:5, flirt:20,sr:.40, w:n=>`${n} gülümsedi!`,      l:"Reddedildin! 😳",flirtOnly:true},
+  {label:"😘 Yakınlaş",       charm:5,mood:10,friend:20,flirt:30,sr:.30, w:n=>`${n} seninle kaldı!`,  l:"Uzaklaştı...",flirtOnly:true},
+];
+
+// ===== STATE =====
+let state={charm:0,friends:0,night:1,guests:[],nearGuest:null,activeGuest:null,locked:false};
+
+// ===== THREE SETUP =====
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=0.85;
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d0a0e);
+scene.fog=new THREE.FogExp2(0x0d0a0e,0.032);
+
+const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.05,200);
+camera.position.set(0,1.7,6);
+
+// ===== LIGHTS =====
+scene.add(new THREE.AmbientLight(0x221133,.7));
+const ceil=new THREE.PointLight(0xffd4a0,1.1,28);ceil.position.set(0,8,0);ceil.castShadow=true;scene.add(ceil);
+[[0xff3366,-6,3,-3],[0x4433ff,6,3,-3],[0xffaa00,0,2,-6]].forEach(([c,x,y,z])=>{const l=new THREE.PointLight(c,1.2,10);l.position.set(x,y,z);scene.add(l);});
+const disco=new THREE.PointLight(0xffffff,1.8,18);disco.position.set(0,6.5,0);scene.add(disco);
+
+// ===== HELPERS =====
+function box(w,h,d,col,x,y,z,r=.6,m=.1){
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:col,roughness:r,metalness:m}));
+  mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);return mesh;
+}
+function cyl(rt,rb,h,col,x,y,z,r=.7,m=0){
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,10),new THREE.MeshStandardMaterial({color:col,roughness:r,metalness:m}));
+  mesh.position.set(x,y,z);mesh.castShadow=true;scene.add(mesh);return mesh;
+}
+
+// ===== ENVIRONMENT =====
+// Floor
+const fl=new THREE.Mesh(new THREE.PlaneGeometry(30,30),new THREE.MeshStandardMaterial({color:0x1a1020,roughness:.85,metalness:.15}));
+fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;scene.add(fl);
+
+// Walls
+box(30,.1,30,0x1a0d28,0,9.95,0,1,0); // ceiling
+box(30,10,.3,0x1a0d28,0,5,-8,1,0);   // back
+box(.3,10,20,0x1a0d28,-8,5,0,1,0);
+box(.3,10,20,0x1a0d28,8,5,0,1,0);
+box(30,10,.3,0x100810,0,5,8,1,0);    // front wall (behind player start)
+
+// Bar counter
+box(14,1.1,2.5,0x3d2b1a,0,.55,-5.5,.5,.1);
+box(14,.08,2.5,0x8b6914,0,1.15,-5.5,.3,.5);
+// Shelves
+[2.5,3.6,4.7].forEach(y=>box(12,.07,.6,0x5a3d1a,0,y,-7.2,.5,.1));
+// Back wall deco
+box(12,5,.1,0x160a22,0,4.5,-7.9,1,0);
+
+// Bottles
+const bottleColors=[0x8833aa,0x3399ff,0xcc5500,0x229944,0xcc3344,0x4455cc,0xaa8800,0x996633,0x3388aa];
+[-4,-3,-2,-1,0,1,2,3,4].forEach((x,i)=>{
+  [2.8,3.9].forEach(y=>{
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.055,.075,.48,8),new THREE.MeshStandardMaterial({color:bottleColors[i],roughness:.1,metalness:.3,transparent:true,opacity:.85}));
+    b.position.set(x*.88,y,-7.1);scene.add(b);
+    const n=new THREE.Mesh(new THREE.CylinderGeometry(.028,.055,.14,8),new THREE.MeshStandardMaterial({color:bottleColors[i],roughness:.1,metalness:.3,transparent:true,opacity:.85}));
+    n.position.set(x*.88,y+.31,-7.1);scene.add(n);
+  });
+});
+
+// Bar stools
+[-4,-2,0,2,4].forEach(x=>{
+  box(.5,.07,.5,0x8b4513,x,.72,-3.8,.5,.1);
+  cyl(.04,.04,.72,0x5a3010,x,.36,-3.8,.8,0);
+});
+
+// Tables
+function table(x,z){
+  box(1.6,.07,1.6,0x5a3d1a,x,.82,z,.4,.2);
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([dx,dz])=>cyl(.035,.035,.82,0x3d2510,x+dx*.62,.41,z+dz*.62,.8,0));
+}
+[[-3.5,2],[3.5,2],[0,4],[-4.5,5.5],[4.5,5.5]].forEach(([x,z])=>table(x,z));
+
+// Disco ball
+const dball=new THREE.Mesh(new THREE.SphereGeometry(.38,16,16),new THREE.MeshStandardMaterial({color:0xddddcc,roughness:0,metalness:1}));
+dball.position.set(0,7,0);scene.add(dball);
+cyl(.02,.02,1.4,0x888888,0,7.7,0,.2,.8);
+
+// Speaker boxes deco
+[-7,7].forEach(x=>{box(.6,1.2,.5,0x111111,x,1.5,-7.5,.9,0);});
+
+// ===== CHARACTER BUILDER =====
+function buildChar(gt,x,z){
+  const g=new THREE.Group();
+
+  // Shoes
+  const shM=new THREE.MeshStandardMaterial({color:0x111111,roughness:.8});
+  [-1,1].forEach(s=>{const sh=new THREE.Mesh(new THREE.BoxGeometry(.2,.1,.32),shM);sh.position.set(s*.13,.05,0);g.add(sh);});
+
+  // Legs
+  const lgM=new THREE.MeshStandardMaterial({color:gt.type==='girl'?0x222244:0x1a2233,roughness:.7});
+  [-1,1].forEach(s=>{const l=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,.55,8),lgM);l.position.set(s*.13,.38,0);g.add(l);});
+
+  // Body
+  const bdM=new THREE.MeshStandardMaterial({color:gt.bodyCol,roughness:.6,metalness:.08});
+  const bd=new THREE.Mesh(gt.type==='girl'?new THREE.CylinderGeometry(.17,.21,.68,12):new THREE.BoxGeometry(.42,.62,.26),bdM);
+  bd.position.set(0,.97,0);g.add(bd);
+
+  // Arms
+  const skM=new THREE.MeshStandardMaterial({color:gt.skin,roughness:.6});
+  [[-1,.14],[1,-.14]].forEach(([s,rz])=>{
+    const a=new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,.48,8),skM);
+    a.position.set(s*.3,.97,0);a.rotation.z=rz;g.add(a);
+  });
+
+  // Neck
+  const nk=new THREE.Mesh(new THREE.CylinderGeometry(.065,.065,.14,8),skM);nk.position.set(0,1.39,0);g.add(nk);
+
+  // Head
+  const hd=new THREE.Mesh(new THREE.SphereGeometry(.21,12,12),skM);hd.position.set(0,1.72,0);g.add(hd);
+
+  // Eyes
+  const eyM=new THREE.MeshStandardMaterial({color:0x111111});
+  [-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.038,8,8),eyM);e.position.set(s*.085,1.75,.19);g.add(e);});
+
+  // Smile
+  const sm=new THREE.Mesh(new THREE.TorusGeometry(.06,.013,8,16,Math.PI),new THREE.MeshStandardMaterial({color:0x882222}));
+  sm.position.set(0,1.61,.2);sm.rotation.z=Math.PI;g.add(sm);
+
+  // Hair
+  const hrM=new THREE.MeshStandardMaterial({color:gt.hairCol,roughness:.9});
+  const hr=new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),hrM);hr.position.set(0,1.78,-.04);hr.scale.set(1,.88,1);g.add(hr);
+  if(gt.type==='girl'){const lh=new THREE.Mesh(new THREE.CylinderGeometry(.13,.07,.58,8),hrM);lh.position.set(0,1.48,-.09);g.add(lh);}
+
+  // Selection ring
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.32,.04,8,32),new THREE.MeshStandardMaterial({color:0xc9a84c,emissive:0xc9a84c,emissiveIntensity:.6,transparent:true,opacity:0}));
+  ring.rotation.x=-Math.PI/2;ring.position.y=.02;g.add(ring);
+
+  // Flirt heart (hidden)
+  const heart=new THREE.Mesh(new THREE.SphereGeometry(.1,8,8),new THREE.MeshStandardMaterial({color:0xff3366,emissive:0xff1144,emissiveIntensity:.8,transparent:true,opacity:0}));
+  heart.position.set(.3,2.3,0);g.add(heart);
+
+  g.position.set(x,0,z);
+  g.rotation.y=Math.random()*Math.PI*2;
+  g.userData={ring,heart,bob:Math.random()*Math.PI*2};
+  scene.add(g);
+  return g;
+}
+
+// ===== GUEST MANAGEMENT =====
+const SPOTS=[[-3.5,1.5],[3.5,1.5],[0,3.2],[-4.5,5],[4.5,5],[-2,-.5],[2,-.5],[-3,3.5],[3,3.5],[-1.5,5.5],[1.5,5.5],[0,1]];
+let meshes=[];
+
+function spawnGuests(n){
+  const used=new Set(meshes.map(m=>`${m.position.x},${m.position.z}`));
+  let added=0;
+  for(const [sx,sz] of SPOTS){
+    if(added>=n)break;
+    const k=`${sx},${sz}`;
+    if(used.has(k))continue;
+    const base=GTYPES[Math.floor(Math.random()*GTYPES.length)];
+    const g={...base,id:Math.random().toString(36).slice(2),mood:30+Math.floor(Math.random()*45),friendship:0,flirt:0,befriended:false};
+    state.guests.push(g);
+    const m=buildChar(g,sx,sz);
+    m.userData.gid=g.id;
+    meshes.push(m);
+    used.add(k);
+    added++;
+  }
+}
+
+// ===== PLAYER =====
+const player={pos:new THREE.Vector3(0,1.7,5),yaw:0,pitch:0};
+const keys={};
+
+// Pointer lock
+canvas.addEventListener('click',()=>{
+  if(!state.locked&&!state.activeGuest) canvas.requestPointerLock();
+});
+document.addEventListener('pointerlockchange',()=>{
+  state.locked=document.pointerLockElement===canvas;
+});
+document.addEventListener('mousemove',e=>{
+  if(!state.locked)return;
+  player.yaw-=e.movementX*.002;
+  player.pitch-=e.movementY*.002;
+  player.pitch=Math.max(-Math.PI/3,Math.min(Math.PI/4,player.pitch));
+});
+document.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.code==='KeyE') tryInteract();
+  if(e.code==='Escape'){closeDialog();if(state.locked)document.exitPointerLock();}
+  if(e.code==='KeyN') nextNight();
+});
+document.addEventListener('keyup',e=>keys[e.code]=false);
+
+// ===== MOVEMENT =====
+const dir=new THREE.Vector3();
+const WALL=7.5,BAR_Z=-4.2;
+
+function movePlayer(){
+  if(state.activeGuest)return;
+  dir.set(0,0,0);
+  if(keys['KeyW']||keys['ArrowUp'])   dir.z-=1;
+  if(keys['KeyS']||keys['ArrowDown']) dir.z+=1;
+  if(keys['KeyA']||keys['ArrowLeft']) dir.x-=1;
+  if(keys['KeyD']||keys['ArrowRight'])dir.x+=1;
+  if(dir.length()===0)return;
+  dir.normalize().multiplyScalar(MOVE_SPEED);
+  dir.applyEuler(new THREE.Euler(0,player.yaw,0));
+  const nx=player.pos.x+dir.x;
+  const nz=player.pos.z+dir.z;
+  if(Math.abs(nx)<WALL) player.pos.x=nx;
+  if(nz<7&&nz>BAR_Z)   player.pos.z=nz;
+}
+
+// ===== INTERACTION =====
+function tryInteract(){
+  if(state.activeGuest){closeDialog();return;}
+  if(state.nearGuest) openDialog(state.nearGuest);
+}
+
+function openDialog(gid){
+  const g=state.guests.find(x=>x.id===gid);
+  if(!g)return;
+  state.activeGuest=gid;
+  document.exitPointerLock();
+  document.getElementById('dialog').style.display='block';
+  document.getElementById('flirt-meter').style.display='block';
+  updateDialog(g);
+}
+
+function closeDialog(){
+  state.activeGuest=null;
+  document.getElementById('dialog').style.display='none';
+  document.getElementById('flirt-meter').style.display='none';
+}
+
+function updateDialog(g){
+  document.getElementById('dname').textContent=g.emoji+' '+g.name+(g.befriended?' ✓':'');
+  const mw=g.mood>65?'Mutlu 😊':g.mood>35?'Nötr 😐':'Sinirli 😠';
+  document.getElementById('dmoodtxt').textContent=mw+' ('+g.mood+'%)';
+  document.getElementById('dfriendtxt').textContent=g.friendship+'%';
+  document.getElementById('dmood-fill').style.width=g.mood+'%';
+  document.getElementById('dmood-fill').style.background=g.mood>65?'#4caf50':g.mood>35?'#ff9800':'#f44336';
+  document.getElementById('dfriend-fill').style.width=g.friendship+'%';
+
+  // Flirt meter
+  document.getElementById('fm-fill').style.width=g.flirt+'%';
+  const fl=g.flirt<25?'Yabancı':g.flirt<50?'İlgi var 👀':g.flirt<75?'Çekim var 💫':'Aşık! 💕';
+  document.getElementById('fm-label').textContent=fl;
+
+  // Actions - show flirt actions only if flirt>30
+  const acts=ACTIONS.filter(a=>!a.flirtOnly||g.flirt>=30);
+  document.getElementById('dactions').innerHTML=acts.map(a=>
+    `<button class="dab${a.flirtOnly?' flirt':''}" onclick="doAction('${g.id}','${a.label}')">${a.label}</button>`
+  ).join('');
+}
+
+function doAction(gid,label){
+  const g=state.guests.find(x=>x.id===gid);
+  const a=ACTIONS.find(x=>x.label===label);
+  if(!g||!a)return;
+  const chance=a.sr+(g.mood-50)/200+(g.flirt/400);
+  const ok=Math.random()<chance;
+  if(ok){
+    g.mood=Math.min(100,g.mood+a.mood);
+    g.friendship=Math.min(100,g.friendship+a.friend);
+    g.flirt=Math.min(100,g.flirt+a.flirt);
+    state.charm+=a.charm;
+    addLog('✨ '+a.w(g.name));
+    spawnParticles(gid,a.flirtOnly?0xff3366:0xffd700);
+    if(a.flirtOnly) showHeart(gid);
+    if(g.friendship>=100&&!g.befriended){g.befriended=true;state.friends++;addLog('🎉 '+g.name+' arkadaşın oldu!');showToast('🎉 '+g.name+' arkadaşın oldu!');}
+    if(g.flirt>=100) showToast('💕 '+g.name+' seninle çok iyi anlaşıyor!');
+  } else {
+    g.mood=Math.max(5,g.mood-10);
+    g.flirt=Math.max(0,g.flirt-5);
+    addLog('😅 '+a.l);
+    showToast('😅 '+a.l);
+  }
+  updateStats();
+  updateDialog(g);
+}
+
+// ===== PARTICLES =====
+const parts=[];
+function spawnParticles(gid,col=0xffd700){
+  const m=meshes.find(x=>x.userData.gid===gid);
+  if(!m)return;
+  for(let i=0;i<10;i++){
+    const p=new THREE.Mesh(new THREE.SphereGeometry(.05,6,6),new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:.7,transparent:true,opacity:1}));
+    p.position.copy(m.position).add(new THREE.Vector3((Math.random()-.5)*.3,1.8,(Math.random()-.5)*.3));
+    p.userData.v=new THREE.Vector3((Math.random()-.5)*.12,.08+Math.random()*.08,(Math.random()-.5)*.12);
+    p.userData.life=1;
+    scene.add(p);parts.push(p);
+  }
+}
+
+function showHeart(gid){
+  const m=meshes.find(x=>x.userData.gid===gid);
+  if(!m)return;
+  m.userData.heart.material.opacity=1;
+  m.userData.heart.userData.fade=1;
+}
+
+function tickParts(){
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i];
+    p.userData.life-=.025;
+    p.position.add(p.userData.v);
+    p.userData.v.y-=.004;
+    p.material.opacity=p.userData.life;
+    if(p.userData.life<=0){scene.remove(p);parts.splice(i,1);}
+  }
+  meshes.forEach(m=>{
+    if(m.userData.heart&&m.userData.heart.userData.fade>0){
+      m.userData.heart.userData.fade-=.02;
+      m.userData.heart.position.y+=.01;
+      m.userData.heart.material.opacity=Math.max(0,m.userData.heart.userData.fade);
+      if(m.userData.heart.userData.fade<=0) m.userData.heart.position.set(.3,2.3,0);
+    }
+  });
+}
+
+// ===== NIGHT =====
+function nextNight(){
+  document.getElementById('nn').textContent=state.night+1;
+  document.getElementById('night-ov').classList.add('show');
+  closeDialog();
+}
+function startNight(){
+  state.night++;
+  document.getElementById('night-ov').classList.remove('show');
+  const keep=new Set(state.guests.filter(g=>g.befriended).map(g=>g.id));
+  meshes=meshes.filter(m=>{if(!keep.has(m.userData.gid)){scene.remove(m);return false;}return true;});
+  state.guests=state.guests.filter(g=>g.befriended);
+  spawnGuests(5+Math.floor(Math.random()*2));
+  updateStats();
+  addLog('🌙 Gece '+state.night+' başladı!');
+}
+
+// ===== LOG / TOAST =====
+function addLog(msg){
+  const d=document.getElementById('log');
+  const e=document.createElement('div');e.className='li';e.textContent=msg;
+  d.insertBefore(e,d.firstChild);
+  if(d.children.length>6)d.removeChild(d.lastChild);
+}
+let tt;
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.style.opacity=1;
+  clearTimeout(tt);tt=setTimeout(()=>t.style.opacity=0,2600);
+}
+function updateStats(){
+  document.getElementById('sc').textContent=state.charm;
+  document.getElementById('sf').textContent=state.friends;
+  document.getElementById('sn').textContent=state.night;
+}
+
+// ===== PROXIMITY DETECTION =====
+const raycaster=new THREE.Raycaster();
+function checkNear(){
+  let closest=null,minD=INTERACT_DIST;
+  meshes.forEach(m=>{
+    const d=player.pos.distanceTo(m.position.clone().setY(player.pos.y));
+    if(d<minD){minD=d;closest=m.userData.gid;}
+  });
+  state.nearGuest=closest;
+
+  const hint=document.getElementById('interact-hint');
+  if(closest&&!state.activeGuest){
+    const g=state.guests.find(x=>x.id===closest);
+    hint.textContent=`E — ${g?g.name+' ile konuş':'Konuş'}`;
+    hint.style.opacity=1;
+  } else {
+    hint.style.opacity=0;
+  }
+
+  // Ring glow for nearby
+  meshes.forEach(m=>{
+    m.userData.ring.material.opacity=(m.userData.gid===closest)?0.85:0;
+  });
+}
+
+// ===== ANIMATE =====
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const t=clock.getElapsedTime();
+
+  movePlayer();
+  checkNear();
+
+  // Camera follows player
+  camera.position.copy(player.pos);
+  camera.rotation.order='YXZ';
+  camera.rotation.y=player.yaw;
+  camera.rotation.x=player.pitch;
+
+  // Disco
+  dball.rotation.y+=.012;
+  disco.color.setHSL((t*.08)%1,1,.5);
+  ceil.intensity=1.1+Math.sin(t*.4)*.1;
+
+  // Bob NPCs
+  meshes.forEach(m=>{
+    if(!state.activeGuest||m.userData.gid!==state.activeGuest){
+      m.position.y=Math.sin(t*1.4+m.userData.bob)*.035;
+    }
+    // Face player when near
+    if(m.userData.gid===state.nearGuest){
+      const dx=player.pos.x-m.position.x,dz=player.pos.z-m.position.z;
+      m.rotation.y=Math.atan2(dx,dz);
+    }
+  });
+
+  tickParts();
+  renderer.render(scene,camera);
+}
+
+// ===== INIT =====
+spawnGuests(7);
+animate();
+addLog('🍸 Bar Rouge açıldı! WASD ile hareket et.');
+addLog('💡 Karaktere yaklaş, E tuşuna bas.');
+
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>

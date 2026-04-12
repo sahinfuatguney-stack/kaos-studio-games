@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Endless Runner</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0a0a18; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: 'Courier New', monospace; }
+#game-wrap { background: #0f0f1a; border-radius: 14px; overflow: hidden; position: relative; width: 700px; max-width: 100vw; box-shadow: 0 0 60px rgba(127,119,221,0.15); }
+#canvas { display: block; width: 100%; }
+#ui { position: absolute; top: 12px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
+.ui-box { background: rgba(255,255,255,0.07); border: 0.5px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 6px 14px; }
+.ui-label { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 0.08em; text-transform: uppercase; }
+.ui-val { font-size: 20px; font-weight: 500; color: #fff; line-height: 1.2; }
+#overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(10,10,26,0.82); border-radius: 14px; }
+#overlay.hidden { display: none; }
+.ov-title { font-size: 32px; font-weight: 700; color: #fff; margin-bottom: 6px; letter-spacing: 0.08em; }
+.ov-sub { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 28px; }
+.ov-score { font-size: 15px; color: rgba(255,255,255,0.7); margin-bottom: 24px; }
+.ov-btn { background: #7f77dd; border: none; border-radius: 10px; color: #fff; font-size: 15px; font-weight: 600; padding: 13px 40px; cursor: pointer; font-family: 'Courier New', monospace; letter-spacing: 0.04em; transition: background 0.15s, transform 0.1s; }
+.ov-btn:hover { background: #534ab7; transform: scale(1.04); }
+.ov-btn:active { transform: scale(0.97); }
+#tip { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 11px; color: rgba(255,255,255,0.22); pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="canvas"></canvas>
+  <div id="ui">
+    <div class="ui-box">
+      <div class="ui-label">Skor</div>
+      <div class="ui-val" id="score-disp">0</div>
+    </div>
+    <div class="ui-box">
+      <div class="ui-label">En Yüksek</div>
+      <div class="ui-val" id="best-disp">0</div>
+    </div>
+    <div class="ui-box">
+      <div class="ui-label">Hız</div>
+      <div class="ui-val" id="speed-disp">1.0x</div>
+    </div>
+  </div>
+  <div id="overlay">
+    <div class="ov-title" id="ov-title">RUNNER</div>
+    <div class="ov-sub" id="ov-sub">Space veya ekrana dokun → Zıpla</div>
+    <div class="ov-score" id="ov-score" style="display:none"></div>
+    <button class="ov-btn" id="ov-btn">Başla</button>
+  </div>
+  <div id="tip">Space / Dokunma = Zıpla &nbsp;|&nbsp; Çift zıplama aktif</div>
+</div>
+
+<script>
+(function(){
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('game-wrap');
+const overlay = document.getElementById('overlay');
+const ovTitle = document.getElementById('ov-title');
+const ovSub = document.getElementById('ov-sub');
+const ovScore = document.getElementById('ov-score');
+const ovBtn = document.getElementById('ov-btn');
+const scoreDisp = document.getElementById('score-disp');
+const bestDisp = document.getElementById('best-disp');
+const speedDisp = document.getElementById('speed-disp');
+
+const W = 700, H = 220;
+canvas.width = W; canvas.height = H;
+
+const GROUND = H - 38;
+const GRAVITY = 0.55;
+const JUMP_FORCE = -13;
+const COLORS = {
+  bg: '#0f0f1a', sky: '#151528', ground: '#252545', groundLine: '#3a3a6a',
+  player: '#7f77dd', playerDark: '#534ab7', playerShine: '#afa9ec',
+  obs1: '#d85a30', obs1d: '#993c1d', obs2: '#1d9e75', obs2d: '#0f6e56',
+  obs3: '#e24b4a', obs3d: '#a32d2d',
+  star: 'rgba(255,255,255,0.35)'
+};
+
+let state = 'idle';
+let score = 0, best = 0, frame = 0;
+let baseSpeed = 5, speed = 5;
+let obstacles = [], particles = [], stars = [];
+let nextObs = 80;
+let bgOffset = 0;
+
+const player = {
+  x: 90, y: GROUND, w: 26, h: 34,
+  vy: 0, jumps: 0, maxJumps: 2,
+  dead: false, runFrame: 0, runTick: 0
+};
+
+function initStars() {
+  stars = [];
+  for (let i = 0; i < 55; i++) {
+    stars.push({
+      x: Math.random()*W,
+      y: Math.random()*(GROUND-40)+6,
+      r: Math.random()*1.4+0.3,
+      speed: Math.random()*0.4+0.1,
+      a: Math.random()*0.5+0.15
+    });
+  }
+}
+initStars();
+
+function resetGame() {
+  player.y = GROUND; player.vy = 0; player.jumps = 0; player.dead = false;
+  player.runFrame = 0; player.runTick = 0;
+  obstacles = []; particles = []; nextObs = 80;
+  score = 0; frame = 0; speed = baseSpeed; bgOffset = 0;
+}
+
+function jump() {
+  if (player.dead) return;
+  if (state === 'idle' || state === 'dead') { startGame(); return; }
+  if (player.jumps < player.maxJumps) {
+    player.vy = JUMP_FORCE - (player.jumps * 1.5);
+    player.jumps++;
+    spawnJumpParticles();
+  }
+}
+
+function startGame() {
+  resetGame();
+  state = 'running';
+  overlay.classList.add('hidden');
+}
+
+function showDead() {
+  state = 'dead';
+  if (score > best) best = score;
+  bestDisp.textContent = best;
+  ovTitle.textContent = 'GAME OVER';
+  ovSub.textContent = 'Tekrar denemek ister misin?';
+  ovScore.style.display = 'block';
+  ovScore.textContent = 'Skor: ' + score + (score >= best && score > 0 ? '  🏆 En yüksek!' : '  |  En yüksek: ' + best);
+  ovBtn.textContent = 'Tekrar Oyna';
+  overlay.classList.remove('hidden');
+}
+
+function spawnJumpParticles() {
+  for (let i = 0; i < 7; i++) {
+    particles.push({
+      x: player.x + player.w/2, y: player.y + player.h,
+      vx: (Math.random()-0.5)*3, vy: Math.random()*-3-1,
+      life: 1, size: Math.random()*4+2, color: COLORS.playerShine
+    });
+  }
+}
+
+function spawnDeathParticles() {
+  for (let i = 0; i < 22; i++) {
+    const angle = (Math.PI*2/22)*i + Math.random()*0.3;
+    const spd = Math.random()*5+2;
+    particles.push({
+      x: player.x + player.w/2, y: player.y + player.h/2,
+      vx: Math.cos(angle)*spd, vy: Math.sin(angle)*spd-3,
+      life: 1, size: Math.random()*6+3, color: COLORS.player
+    });
+  }
+}
+
+function spawnObstacle() {
+  const types = [
+    { w: 18, h: 38, color: COLORS.obs1, dark: COLORS.obs1d, shape: 'cactus' },
+    { w: 28, h: 24, color: COLORS.obs2, dark: COLORS.obs2d, shape: 'block' },
+    { w: 14, h: 52, color: COLORS.obs1, dark: COLORS.obs1d, shape: 'tall' },
+    { w: 38, h: 18, color: COLORS.obs3, dark: COLORS.obs3d, shape: 'wide' },
+    { w: 22, h: 32, color: COLORS.obs2, dark: COLORS.obs2d, shape: 'block' },
+  ];
+  const t = types[Math.floor(Math.random()*types.length)];
+  obstacles.push({
+    x: W + 20, y: GROUND + player.h - t.h,
+    w: t.w, h: t.h,
+    color: t.color, dark: t.dark, shape: t.shape, passed: false
+  });
+}
+
+function checkCollision(a, b) {
+  const pad = 4;
+  return a.x+pad < b.x+b.w-pad && a.x+a.w-pad > b.x+pad &&
+         a.y+pad < b.y+b.h-pad && a.y+a.h-pad > b.y+pad;
+}
+
+function drawBg() {
+  ctx.fillStyle = COLORS.sky;
+  ctx.fillRect(0, 0, W, GROUND);
+
+  stars.forEach(s => {
+    ctx.globalAlpha = s.a;
+    ctx.fillStyle = COLORS.star;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  ctx.fillStyle = COLORS.ground;
+  ctx.fillRect(0, GROUND, W, H - GROUND);
+  ctx.fillStyle = COLORS.groundLine;
+  ctx.fillRect(0, GROUND, W, 2);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  for (let i = 0; i < 8; i++) {
+    const lx = ((bgOffset * 0.3 + i * 95) % W + W) % W;
+    ctx.fillRect(lx, GROUND + 6, 60, 2);
+  }
+}
+
+function drawObstacle(o) {
+  if (o.shape === 'cactus') {
+    ctx.fillStyle = o.color;
+    ctx.fillRect(o.x + 4, o.y, o.w - 8, o.h);
+    ctx.fillRect(o.x, o.y + 10, o.w, 12);
+    ctx.fillStyle = o.dark;
+    ctx.fillRect(o.x + 4, o.y, 4, o.h);
+    ctx.fillRect(o.x, o.y + 10, 4, 12);
+  } else if (o.shape === 'tall') {
+    ctx.fillStyle = o.color;
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+    ctx.fillStyle = o.dark;
+    ctx.fillRect(o.x, o.y, 4, o.h);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(o.x + o.w - 4, o.y, 4, o.h * 0.6);
+  } else if (o.shape === 'wide') {
+    ctx.fillStyle = o.color;
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+    ctx.fillStyle = o.dark;
+    ctx.fillRect(o.x, o.y, o.w, 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillRect(o.x + 4, o.y + 4, o.w - 8, 4);
+  } else {
+    ctx.fillStyle = o.color;
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+    ctx.fillStyle = o.dark;
+    ctx.fillRect(o.x, o.y, o.w, 5);
+    ctx.fillRect(o.x, o.y, 5, o.h);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(o.x + o.w - 5, o.y + 5, 5, o.h - 10);
+  }
+}
+
+function drawPlayer() {
+  const px = player.x, py = player.y, pw = player.w, ph = player.h;
+  const isAir = player.jumps > 0;
+
+  ctx.fillStyle = COLORS.playerDark;
+  ctx.fillRect(px + 2, py + 2, pw, ph);
+
+  ctx.fillStyle = COLORS.player;
+  ctx.fillRect(px, py, pw, ph);
+
+  ctx.fillStyle = COLORS.playerShine;
+  ctx.fillRect(px + pw - 6, py + 3, 4, ph * 0.5);
+  ctx.fillRect(px + 3, py, pw - 8, 3);
+
+  if (!isAir) {
+    player.runTick++;
+    if (player.runTick > 8) { player.runFrame = (player.runFrame + 1) % 3; player.runTick = 0; }
+    const legY = py + ph;
+    const legH = 6, legW = 8;
+    const leg1x = player.runFrame === 1 ? px + 2 : px + 4;
+    const leg2x = player.runFrame === 1 ? px + pw - 10 : px + pw - 12;
+    ctx.fillStyle = COLORS.playerDark;
+    ctx.fillRect(leg1x, legY, legW, legH);
+    ctx.fillRect(leg2x, legY, legW, legH);
+  }
+
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(px + pw - 9, py + 6, 5, 5);
+  ctx.fillStyle = '#0f0f1a';
+  ctx.fillRect(px + pw - 8, py + 7, 3, 3);
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life * 0.85;
+    ctx.fillStyle = p.color;
+    const s = p.size * p.life;
+    ctx.fillRect(p.x - s/2, p.y - s/2, s, s);
+  });
+  ctx.globalAlpha = 1;
+}
+
+function update() {
+  if (state !== 'running') return;
+  frame++;
+  score = Math.floor(frame / 6);
+  speed = baseSpeed + Math.floor(score / 120) * 0.6 + (score / 800);
+  if (speed > 18) speed = 18;
+  bgOffset += speed;
+
+  stars.forEach(s => { s.x -= s.speed; if (s.x < 0) s.x = W; });
+
+  player.vy += GRAVITY;
+  player.y += player.vy;
+  if (player.y >= GROUND) { player.y = GROUND; player.vy = 0; player.jumps = 0; }
+
+  nextObs--;
+  if (nextObs <= 0) {
+    spawnObstacle();
+    const minGap = Math.max(55, 110 - score / 20);
+    nextObs = Math.floor(Math.random() * 60 + minGap);
+  }
+
+  obstacles = obstacles.filter(o => o.x + o.w > -10);
+  obstacles.forEach(o => {
+    o.x -= speed;
+    if (!o.passed && o.x + o.w < player.x) { o.passed = true; }
+    if (!player.dead && checkCollision(player, o)) {
+      player.dead = true;
+      spawnDeathParticles();
+      setTimeout(showDead, 600);
+      state = 'dying';
+    }
+  });
+
+  particles = particles.filter(p => p.life > 0.02);
+  particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.18; p.life -= 0.045; });
+
+  scoreDisp.textContent = score;
+  speedDisp.textContent = (speed / baseSpeed).toFixed(1) + 'x';
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  drawBg();
+  if (state === 'running' || state === 'dying') {
+    obstacles.forEach(drawObstacle);
+    drawPlayer();
+    drawParticles();
+  }
+}
+
+function loop() {
+  update();
+  render();
+  requestAnimationFrame(loop);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); jump(); }
+});
+wrap.addEventListener('touchstart', e => { e.preventDefault(); jump(); }, { passive: false });
+wrap.addEventListener('mousedown', e => { if (state !== 'idle') jump(); });
+ovBtn.addEventListener('click', e => { e.stopPropagation(); startGame(); });
+
+loop();
+render();
+})();
+</script>
+</body>
+</html>

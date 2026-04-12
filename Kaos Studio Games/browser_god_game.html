@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tarayıcı Tanrısı v2</title>
+<style>
+/* ===== BASE ===== */
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family:'Courier New',monospace;
+    background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+    color:#eee; min-height:100vh; overflow-x:hidden;
+}
+/* ===== HEADER ===== */
+.header {
+    text-align:center; padding:18px 10px 14px;
+    background:rgba(0,0,0,0.5);
+    border-bottom:2px solid rgba(100,100,255,0.3);
+    position:sticky; top:0; z-index:100;
+}
+.header h1 { font-size:1.8em; text-shadow:0 0 18px #7c4dff; margin-bottom:4px; }
+.god-level { color:#ffd700; font-size:1em; text-shadow:0 0 8px #ffd700; }
+/* ===== TAB NAV ===== */
+.nav-tabs {
+    display:flex; justify-content:center; gap:6px;
+    flex-wrap:wrap; padding:10px 8px; background:rgba(0,0,0,0.4);
+    border-bottom:1px solid rgba(255,255,255,0.1);
+}
+.nav-tab {
+    padding:8px 14px; background:rgba(255,255,255,0.07);
+    border:1px solid rgba(255,255,255,0.15); border-radius:20px;
+    color:#aaa; cursor:pointer; font-family:inherit; font-size:0.85em;
+    transition:all .2s;
+}
+.nav-tab:hover { background:rgba(255,255,255,0.13); color:#fff; }
+.nav-tab.active { background:#7c4dff; color:#fff; border-color:#7c4dff; box-shadow:0 0 10px rgba(124,77,255,0.4); }
+/* ===== PAGES ===== */
+.page { display:none; padding:16px 12px; max-width:860px; margin:0 auto; animation:fadeIn .25s; }
+.page.active { display:block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+/* ===== RESOURCE BAR ===== */
+.res-bar {
+    display:flex; flex-wrap:wrap; gap:10px; justify-content:center;
+    padding:10px; background:rgba(0,0,0,0.35); border-radius:10px;
+    margin-bottom:14px; border:1px solid rgba(255,255,255,0.08);
+}
+.res-item { text-align:center; min-width:80px; }
+.res-icon { font-size:1.3em; }
+.res-val { font-size:0.95em; font-weight:bold; color:#fff; }
+.res-label { font-size:0.65em; color:#888; }
+/* ===== WARNING ===== */
+.warning-box {
+    background:rgba(255,40,40,0.25); border:2px solid #ff2828;
+    border-radius:8px; padding:10px; text-align:center;
+    margin-bottom:12px; animation:pulse 2s infinite; display:none;
+}
+@keyframes pulse { 0%,100%{opacity:.7} 50%{opacity:1;transform:scale(1.02)} }
+/* ===== CARDS ===== */
+.card { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:14px; margin-bottom:12px; }
+.card-title { font-size:1em; font-weight:bold; margin-bottom:8px; color:#b388ff; }
+/* ===== BUTTONS ===== */
+.btn {
+    display:inline-block; padding:10px 16px; font-family:inherit;
+    font-size:0.85em; background:rgba(124,77,255,0.3); color:#fff;
+    border:1px solid rgba(124,77,255,0.6); border-radius:8px;
+    cursor:pointer; transition:all .18s; margin:3px; text-align:center;
+}
+.btn:hover:not(:disabled) { background:rgba(124,77,255,0.55); transform:scale(1.04); }
+.btn:disabled { opacity:.4; cursor:not-allowed; }
+.btn-green { background:rgba(30,200,100,0.3); border-color:rgba(30,200,100,0.6); }
+.btn-green:hover:not(:disabled) { background:rgba(30,200,100,0.55); }
+.btn-red { background:rgba(220,50,50,0.3); border-color:rgba(220,50,50,0.6); }
+.btn-gold { background:rgba(200,170,0,0.3); border-color:rgba(255,215,0,0.5); }
+.btn-gold:hover:not(:disabled) { background:rgba(200,170,0,0.55); }
+/* ===== ACTION GRID ===== */
+.action-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; margin-bottom:14px; }
+/* ===== UPGRADE LIST ===== */
+.upgrade-row {
+    display:flex; align-items:center; justify-content:space-between;
+    background:rgba(255,255,255,0.05); padding:10px 12px;
+    border-radius:8px; margin-bottom:8px; gap:8px; flex-wrap:wrap;
+    border:1px solid rgba(255,255,255,0.08);
+}
+.upgrade-row.bought { opacity:.4; border-color:rgba(30,200,100,0.4); }
+.upg-left { flex:1; min-width:140px; }
+.upg-name { font-weight:bold; font-size:.9em; }
+.upg-desc { font-size:.75em; color:#999; margin-top:2px; }
+.upg-cost { color:#ffd700; font-size:.8em; }
+/* ===== EVENT LOG ===== */
+.event-log { max-height:180px; overflow-y:auto; }
+.ev { padding:7px 10px; border-radius:5px; margin-bottom:5px; font-size:.82em; animation:slideIn .2s; }
+.ev-good { background:rgba(30,200,100,0.18); border-left:3px solid #1ec864; }
+.ev-bad  { background:rgba(220,50,50,0.18); border-left:3px solid #dc3232; }
+.ev-neu  { background:rgba(255,255,255,0.07); border-left:3px solid rgba(255,255,255,0.3); }
+@keyframes slideIn { from{transform:translateX(-16px);opacity:0} to{transform:translateX(0);opacity:1} }
+/* ===== MINIGAME STYLES ===== */
+/* Click Race */
+.click-arena {
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+}
+.click-target {
+    width:120px; height:120px; border-radius:50%;
+    background:radial-gradient(circle,#7c4dff,#3f1cb5);
+    border:3px solid #b388ff; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2.5em; transition:transform .08s, box-shadow .08s;
+    box-shadow:0 0 20px rgba(124,77,255,0.4); user-select:none;
+}
+.click-target:active { transform:scale(.88); box-shadow:0 0 8px rgba(124,77,255,.2); }
+.mini-timer-bar { width:100%; height:8px; background:rgba(255,255,255,.15); border-radius:4px; overflow:hidden; }
+.mini-timer-fill { height:100%; background:linear-gradient(90deg,#1ec864,#ffd700,#ff4444); transition:width .1s linear; }
+/* Memory Match */
+.memory-grid {
+    display:grid; grid-template-columns:repeat(4,1fr); gap:8px; max-width:340px; margin:0 auto;
+}
+.mem-card {
+    aspect-ratio:1; background:#2a2a4a; border:2px solid #444;
+    border-radius:8px; cursor:pointer; display:flex;
+    align-items:center; justify-content:center; font-size:1.6em;
+    transition:transform .15s, background .15s; user-select:none;
+}
+.mem-card:hover { transform:scale(1.05); }
+.mem-card.flipped, .mem-card.matched { background:#3f2d8a; border-color:#7c4dff; }
+.mem-card.matched { background:#1e4d3a; border-color:#1ec864; opacity:.7; }
+/* Spam Killer */
+.spam-field { position:relative; width:100%; height:220px; overflow:hidden; background:rgba(0,0,0,.3); border-radius:8px; border:1px solid rgba(255,255,255,.1); }
+.spam-bug {
+    position:absolute; cursor:pointer; font-size:1.8em;
+    animation:bugFall 3s linear forwards; user-select:none;
+    transition:transform .1s;
+}
+.spam-bug:hover { transform:scale(1.2); }
+@keyframes bugFall { from{top:-40px} to{top:230px} }
+/* Typing Test */
+.typing-area { display:flex; flex-direction:column; gap:10px; }
+.typing-target { background:rgba(0,0,0,.3); padding:12px; border-radius:8px; font-size:.95em; letter-spacing:1px; min-height:48px; display:flex; align-items:center; justify-content:center; text-align:center; border:1px solid rgba(255,255,255,.1); }
+.typing-target .correct { color:#1ec864; }
+.typing-target .wrong  { color:#ff4444; background:rgba(255,0,0,.15); border-radius:3px; padding:0 2px; }
+.typing-target .current { border-bottom:2px solid #ffd700; }
+.typing-input {
+    width:100%; padding:10px 12px; background:rgba(0,0,0,.4);
+    border:1px solid rgba(255,255,255,.2); border-radius:8px;
+    color:#fff; font-family:inherit; font-size:1em;
+    outline:none;
+}
+.typing-input:focus { border-color:#7c4dff; }
+/* ===== CACHE BAR ===== */
+.cache-bar { height:10px; background:rgba(255,255,255,.15); border-radius:5px; overflow:hidden; margin-top:6px; }
+.cache-fill { height:100%; background:linear-gradient(90deg,#1ec864,#ffd700,#ff4444); transition:width .3s; }
+/* ===== STATS GRID ===== */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px; }
+.stat-box { background:rgba(0,0,0,.3); border-radius:8px; padding:10px; text-align:center; border:1px solid rgba(255,255,255,.08); }
+.stat-val { font-size:1.2em; font-weight:bold; color:#b388ff; }
+.stat-lbl { font-size:.7em; color:#888; margin-top:2px; }
+/* ===== SCROLL ===== */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,.2); border-radius:3px; }
+/* ===== RESPONSIVE ===== */
+@media(max-width:500px){
+    .header h1{font-size:1.3em}
+    .nav-tab{padding:6px 10px;font-size:.78em}
+    .action-grid{grid-template-columns:1fr 1fr}
+    .memory-grid{grid-template-columns:repeat(4,1fr);gap:4px}
+}
+</style>
+</head>
+<body>
+<!-- ========== HEADER ========== -->
+<div class="header">
+    <h1>🌐 Tarayıcı Tanrısı</h1>
+    <div class="god-level" id="godLevel">Tarayıcı Ruhu</div>
+</div>
+<!-- ========== RESOURCE BAR ========== -->
+<div class="res-bar" id="resBar">
+    <div class="res-item"><div class="res-icon">📑</div><div class="res-val" id="rTabs">0</div><div class="res-label">Sekme</div></div>
+    <div class="res-item"><div class="res-icon">🍪</div><div class="res-val" id="rCook">0</div><div class="res-label">Çerez</div></div>
+    <div class="res-item"><div class="res-icon">💾</div><div class="res-val" id="rCache">0/100</div><div class="res-label">Cache</div></div>
+    <div class="res-item"><div class="res-icon">💰</div><div class="res-val" id="rAd">0</div><div class="res-label">Reklam$</div></div>
+    <div class="res-item"><div class="res-icon">⭐</div><div class="res-val" id="rXP">0</div><div class="res-label">XP</div></div>
+</div>
+<!-- ========== NAV ========== -->
+<div class="nav-tabs">
+    <div class="nav-tab active" onclick="switchPage('main')">🏠 Ana</div>
+    <div class="nav-tab" onclick="switchPage('upgrades')">🔧 Uzantılar</div>
+    <div class="nav-tab" onclick="switchPage('minigames')">🎮 Minigames</div>
+    <div class="nav-tab" onclick="switchPage('stats')">📊 Stats</div>
+</div>
+<!-- ========== PAGE: MAIN ========== -->
+<div class="page active" id="page-main">
+    <div class="warning-box" id="warningBox"></div>
+    <div class="card">
+        <div class="card-title">⚡ Eylemler</div>
+        <div class="action-grid">
+            <div class="btn btn-green" onclick="G.openTab()">📑 Sekme Aç<br><small>+1 güç/sn</small></div>
+            <div class="btn btn-red" onclick="G.closeTab()" id="btnClose">❌ Sekme Kapat</div>
+            <div class="btn btn-gold" onclick="G.clearCache()" id="btnCache">🗑️ Cache Temizle<br><small>Soft Reset</small></div>
+            <div class="btn" onclick="G.enableAds()" id="btnAds">📺 Reklamları Aç</div>
+        </div>
+    </div>
+    <!-- Cache visualize -->
+    <div class="card">
+        <div class="card-title">💾 Cache Doluluk</div>
+        <div class="cache-bar"><div class="cache-fill" id="cacheFill" style="width:0%"></div></div>
+        <div style="font-size:.75em;color:#888;margin-top:4px;" id="cacheInfo">Cache boş</div>
+    </div>
+    <!-- Sekme visuals -->
+    <div class="card">
+        <div class="card-title">📑 Açık Sekmeler</div>
+        <div id="tabVisual" style="display:flex;flex-wrap:wrap;gap:4px;max-height:80px;overflow:hidden;"></div>
+    </div>
+    <!-- Events -->
+    <div class="card">
+        <div class="card-title">📜 Olay Günlüğü</div>
+        <div class="event-log" id="evLog"></div>
+    </div>
+</div>
+<!-- ========== PAGE: UPGRADES ========== -->
+<div class="page" id="page-upgrades">
+    <div class="card">
+        <div class="card-title">🔧 Uzantılar — Yükseltmeler</div>
+        <div id="upgList"></div>
+    </div>
+</div>
+<!-- ========== PAGE: MINIGAMES ========== -->
+<div class="page" id="page-minigames">
+    <div class="card">
+        <div class="card-title">🎮 Minigame Seç</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <div class="btn btn-green" onclick="startMini('click')">👆 Click Race</div>
+            <div class="btn btn-green" onclick="startMini('memory')">🧠 Memory Match</div>
+            <div class="btn btn-green" onclick="startMini('spam')">🦟 Spam Killer</div>
+            <div class="btn btn-green" onclick="startMini('typing')">⌨️ Typing Test</div>
+        </div>
+    </div>
+    <!-- CLICK RACE -->
+    <div class="card" id="mini-click" style="display:none;">
+        <div class="card-title">👆 Click Race — 5 Saniyede Max Tıkla!</div>
+        <div class="click-arena">
+            <div class="mini-timer-bar"><div class="mini-timer-fill" id="clickTimerFill" style="width:100%"></div></div>
+            <div class="click-target" id="clickTarget" onclick="miniClick()">👆</div>
+            <div style="font-size:1.4em;color:#ffd700;" id="clickScore">Tıklar: 0</div>
+            <div style="font-size:.8em;color:#aaa;" id="clickStatus">Tıklamaya başla!</div>
+        </div>
+    </div>
+    <!-- MEMORY MATCH -->
+    <div class="card" id="mini-memory" style="display:none;">
+        <div class="card-title">🧠 Memory Match — Eş Kartları Bul!</div>
+        <div style="text-align:center;margin-bottom:8px;font-size:.85em;color:#aaa;">
+            Çift: <span id="memPairs">0</span>/6 &nbsp; Hamle: <span id="memMoves">0</span>
+        </div>
+        <div class="memory-grid" id="memGrid"></div>
+        <div style="text-align:center;margin-top:10px;">
+            <div class="btn btn-green" onclick="initMemory()">🔄 Yeniden Başla</div>
+        </div>
+    </div>
+    <!-- SPAM KILLER -->
+    <div class="card" id="mini-spam" style="display:none;">
+        <div class="card-title">🦟 Spam Killer — Spam'ları Öldür!</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:.85em;">
+            <span>Öldürülen: <span id="spamKills">0</span></span>
+            <span>Kaçan: <span id="spamEscape">0</span></span>
+        </div>
+        <div class="mini-timer-bar" style="margin-bottom:8px;"><div class="mini-timer-fill" id="spamTimerFill" style="width:100%"></div></div>
+        <div class="spam-field" id="spamField"></div>
+        <div style="text-align:center;margin-top:8px;font-size:.8em;color:#aaa;" id="spamStatus">Spam gelmeye başladı!</div>
+    </div>
+    <!-- TYPING TEST -->
+    <div class="card" id="mini-typing" style="display:none;">
+        <div class="card-title">⌨️ Typing Test — Hızlı Yaz!</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:.85em;">
+            <span>Doğru: <span id="typCorrect">0</span></span>
+            <span>Yanlış: <span id="typWrong">0</span></span>
+        </div>
+        <div class="mini-timer-bar" style="margin-bottom:8px;"><div class="mini-timer-fill" id="typTimerFill" style="width:100%"></div></div>
+        <div class="typing-area">
+            <div class="typing-target" id="typTarget"></div>
+            <input type="text" class="typing-input" id="typInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Burada yaz...">
+        </div>
+        <div style="text-align:center;margin-top:8px;font-size:.8em;color:#aaa;" id="typStatus">Yazmaya başla!</div>
+    </div>
+</div>
+<!-- ========== PAGE: STATS ========== -->
+<div class="page" id="page-stats">
+    <div class="card">
+        <div class="card-title">📊 İstatistikler</div>
+        <div class="stats-grid">
+            <div class="stat-box"><div class="stat-val" id="sTabs">0</div><div class="stat-lbl">Toplam Sekme</div></div>
+            <div class="stat-box"><div class="stat-val" id="sResets">0</div><div class="stat-lbl">Cache Reset</div></div>
+            <div class="stat-box"><div class="stat-val" id="sUptime">0</div><div class="stat-lbl">Çalışma (sn)</div></div>
+            <div class="stat-box"><div class="stat-val" id="sProd">0</div><div class="stat-lbl">Üretim/sn</div></div>
+            <div class="stat-box"><div class="stat-val" id="sMiniBest">0</div><div class="stat-lbl">Mini En İyi</div></div>
+            <div class="stat-box"><div class="stat-val" id="sLevel">1</div><div class="stat-lbl">Seviye</div></div>
+        </div>
+    </div>
+    <div class="card" style="margin-top:12px;">
+        <div class="card-title">🏆 Seviye Yolu</div>
+        <div id="levelPath"></div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// OYUN STATE — Tüm oyun verisi burada
+// ============================================================
+const G = {
+    tabs:0, cookies:0, cache:0, cacheMax:100, adRev:0,
+    xp:0, uptime:0, resets:0, adsOn:false,
+    tabMul:1, autoCook:false, adBlock:false, incognito:false,
+    quantumTabs:false, cookieTab:false, cacheBonus:1,
+    miniLeaderboard:{ click:0, memory:999, spam:0, typing:0 },
+    totalTabsOpened:0,
+
+    // ========== TANRI SEVIYELER ==========
+    levels:[
+        {name:"Tarayıcı Ruhu",xp:0},
+        {name:"Sekme Sihirbazı",xp:150},
+        {name:"Çerez Koleksiyoncusu",xp:600},
+        {name:"Cache Efendisi",xp:2000},
+        {name:"Reklam Dehası",xp:5000},
+        {name:"Uzantı Mimarı",xp:10000},
+        {name:"Veri Tanrısı",xp:22000},
+        {name:"Protokol Efendisi",xp:50000},
+        {name:"İnternet'in Yaratıcısı",xp:120000}
+    ],
+    curLevel:0,
+
+    // ========== UPGRADELER (12 adet) ==========
+    upgrades:[
+        {id:"u1",name:"🌀 Hızlı Yükleme",desc:"Sekme üretimi x2",cost:60,bought:false,fn:()=>{G.tabMul*=2}},
+        {id:"u2",name:"🍪 Çerez Tuzağı",desc:"Otomatik çerez üretimi (+1/sn)",cost:150,bought:false,fn:()=>{G.autoCook=true}},
+        {id:"u3",name:"📦 Büyük Cache",desc:"Cache kapasitesi x2",cost:250,bought:false,fn:()=>{G.cacheMax*=2}},
+        {id:"u4",name:"🛡️ Reklam Engelleyici",desc:"Kötü reklam olayları %60 azalır",cost:400,bought:false,fn:()=>{G.adBlock=true}},
+        {id:"u5",name:"🕵️ Gizli Mod",desc:"Cache dolma hızı yarıya iner",cost:600,bought:false,fn:()=>{G.incognito=true}},
+        {id:"u6",name:"⚛️ Kuantum Sekmeler",desc:"Her sekme çerez üretir",cost:1200,bought:false,fn:()=>{G.quantumTabs=true}},
+        {id:"u7",name:"🍪📑 Cookie Tab",desc:"Her sekme açma +3 çerez",cost:800,bought:false,fn:()=>{G.cookieTab=true}},
+        {id:"u8",name:"💎 Cache Kristali",desc:"Cache temizleme bonusu x2",cost:2000,bought:false,fn:()=>{G.cacheBonus*=2}},
+        {id:"u9",name:"🤖 Bot Ordusu",desc:"Otomatik sekme aç/kapat (net +2/sn)",cost:3000,bought:false,fn:()=>{G.botArmy=true}},
+        {id:"u10",name:"🌐 DNS Optimizer",desc:"Tüm üretim x1.5",cost:5000,bought:false,fn:()=>{G.tabMul*=1.5}},
+        {id:"u11",name:"🔋 Service Worker",desc:"Cache dolmadan önce +50% üretim bonus",cost:7500,bought:false,fn:()=>{G.serviceWorker=true}},
+        {id:"u12",name:"🕳️ Wormhole",desc:"Minigame ödülları x2",cost:12000,bought:false,fn:()=>{G.miniMul=2}}
+    ],
+    botArmy:false, serviceWorker:false, miniMul:1,
+
+    // ========== RASTGELE OLAYLAR ==========
+    events:[
+        {t:"Birileri çerezleri kabul etti! 🎉",ty:"good",fx:()=>{G.cookies+=8}},
+        {t:"Chrome güncelleme istiyor. Yok artık.",ty:"bad",fx:()=>{G.cache+=15}},
+        {t:"Sekme çöktü! Kaos başladı!",ty:"bad",fx:()=>{if(G.tabs>1)G.tabs--}},
+        {t:"Gizemli plugin kendini yükledi...",ty:"neu",fx:()=>{G.xp+=12}},
+        {t:"Spam klasöründen garip bir mesaj geldi.",ty:"neu",fx:null},
+        {t:"A/B test başlatıldı... Sen kontrol grupsun.",ty:"neu",fx:null},
+        {t:"Evrensel çerez yasası yürürlüğe girdi!",ty:"good",fx:()=>{G.cookies+=20}},
+        {t:"RAM kriyi! Sistem yavaşladı.",ty:"bad",fx:()=>{G.cache+=10}},
+        {t:"Dark mode aktif edildi. Ruh dinlene.",ty:"neu",fx:()=>{G.xp+=5}},
+        {t:"JavaScript timeout! Evren dondu.",ty:"bad",fx:()=>{G.cookies-=5}},
+        {t:"Google seni indeksle—yi! +XP",ty:"good",fx:()=>{G.xp+=25}},
+        {t:"Birisi Ctrl+Shift+Delete'e bastı...",ty:"bad",fx:()=>{G.cache+=25}}
+    ],
+    adEvents:[
+        {t:"💰 Reklam gelirii! +40 çerez",ty:"good",fx:()=>{G.cookies+=40}},
+        {t:"🎰 JACKPOT! +120 çerez!",ty:"good",fx:()=>{G.cookies+=120}},
+        {t:"🦠 Malware! Cache +40",ty:"bad",fx:()=>{G.cache+=40}},
+        {t:"⚠️ Pop-up patlaması! +3 sekme",ty:"bad",fx:()=>{G.tabs+=3;G.totalTabsOpened+=3}},
+        {t:"🎵 Otomatik video. Kullanıcılar kaçıyor!",ty:"bad",fx:()=>{G.cookies=Math.max(0,G.cookies-15)}},
+        {t:"📦 Veri satıldı... ama ödül var: +60🍪",ty:"neu",fx:()=>{G.cookies+=60}}
+    ],
+
+    // ========== CORE FONKSIYONLAR ==========
+    openTab(){
+        G.tabs++; G.totalTabsOpened++;
+        G.xp+=1;
+        if(G.cookieTab) G.cookies+=3;
+        log("Yeni sekme açıldı. Evren genişliyor...",'neu');
+        checkWarn();
+    },
+    closeTab(){
+        if(G.tabs>0

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚽ Türk Futbol Oyunu</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto+Condensed:wght@400;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0f; color: #fff; font-family: 'Roboto Condensed', sans-serif; min-height: 100vh; }
+
+  #baslik {
+    text-align: center;
+    padding: 18px 0 10px;
+    background: linear-gradient(180deg, #111 0%, transparent 100%);
+  }
+  #baslik h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: #FFD700;
+    text-shadow: 0 0 30px rgba(255,215,0,0.4);
+  }
+  #baslik p { font-size: 12px; color: #888; letter-spacing: 2px; margin-top: 3px; }
+
+  #ana { max-width: 860px; margin: 0 auto; padding: 0 12px 20px; }
+
+  /* SKOR TABLO */
+  #skor-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin: 10px 0;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .takim-blok {
+    flex: 1;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .takim-blok.sag { flex-direction: row-reverse; }
+  .takim-logo {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px;
+    flex-shrink: 0;
+  }
+  .takim-adi { font-family: 'Oswald', sans-serif; font-size: 16px; font-weight: 600; letter-spacing: 1px; }
+  .takim-sehir { font-size: 11px; color: #666; }
+  #skor-merkez {
+    padding: 10px 24px;
+    text-align: center;
+    border-left: 1px solid #222;
+    border-right: 1px solid #222;
+    min-width: 120px;
+  }
+  #skor-sayi { font-family: 'Oswald', sans-serif; font-size: 40px; font-weight: 700; color: #FFD700; line-height: 1; }
+  #sure-label { font-size: 11px; color: #888; letter-spacing: 2px; margin-top: 3px; }
+
+  /* TAKİM SEÇ */
+  #takim-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .takim-sec-grup { background: #111; border: 1px solid #222; border-radius: 10px; padding: 10px; }
+  .takim-sec-baslik { font-size: 11px; color: #888; letter-spacing: 2px; margin-bottom: 8px; }
+  .takim-butonlar { display: flex; flex-direction: column; gap: 4px; }
+  .t-btn {
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1px solid #333;
+    background: #1a1a1a;
+    color: #ccc;
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .t-btn:hover { border-color: #555; background: #222; color: #fff; }
+  .t-btn.aktif { border-color: #FFD700; background: #1c1800; color: #FFD700; }
+  .t-renk-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* SAHA */
+  #saha-kap {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid #333;
+    margin-bottom: 10px;
+  }
+  #saha {
+    width: 100%;
+    height: 400px;
+    background: #2a7a2a;
+    position: relative;
+    cursor: crosshair;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(0,0,0,0.08) 49px, rgba(0,0,0,0.08) 50px),
+      repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(0,0,0,0.08) 49px, rgba(0,0,0,0.08) 50px);
+  }
+  .s-cizgi { position: absolute; background: rgba(255,255,255,0.5); }
+  .s-orta-v { width: 2px; top: 0; bottom: 0; left: 50%; }
+  .s-orta-d { position: absolute; width: 110px; height: 110px; border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+  .s-orta-n { position: absolute; width: 10px; height: 10px; background: rgba(255,255,255,0.7); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+  .s-kale { position: absolute; border: 2px solid rgba(255,255,255,0.6); background: rgba(255,255,255,0.05); }
+  .s-kale.sol { left: 0; top: 30%; width: 7%; height: 40%; }
+  .s-kale.sag { right: 0; top: 30%; width: 7%; height: 40%; }
+  .s-ceza { position: absolute; border: 2px solid rgba(255,255,255,0.4); }
+  .s-ceza.sol { left: 0; top: 20%; width: 16%; height: 60%; }
+  .s-ceza.sag { right: 0; top: 20%; width: 16%; height: 60%; }
+
+  .futbolcu {
+    position: absolute;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; font-family: 'Oswald', sans-serif;
+    cursor: grab;
+    user-select: none;
+    transition: transform 0.1s;
+    border: 2px solid rgba(255,255,255,0.6);
+    z-index: 5;
+    letter-spacing: 0.5px;
+  }
+  .futbolcu:active { cursor: grabbing; transform: scale(1.15); }
+  .futbolcu.secili { box-shadow: 0 0 0 3px #FFD700; }
+
+  .top {
+    position: absolute;
+    width: 20px; height: 20px;
+    background: radial-gradient(circle at 35% 35%, #fff 0%, #ddd 60%, #aaa 100%);
+    border-radius: 50%;
+    z-index: 10;
+    cursor: grab;
+    border: 1.5px solid #333;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  }
+
+  .takim-etiket {
+    position: absolute;
+    top: 8px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 12px;
+    letter-spacing: 2px;
+    background: rgba(0,0,0,0.5);
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .takim-etiket.sol { left: 10px; }
+  .takim-etiket.sag { right: 10px; }
+
+  #sure-goster {
+    position: absolute;
+    bottom: 8px; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px; letter-spacing: 2px;
+    background: rgba(0,0,0,0.6);
+    padding: 3px 14px; border-radius: 20px;
+    color: #FFD700;
+  }
+
+  #gol-mesaji {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    background: rgba(0,0,0,0.9);
+    color: #FFD700;
+    font-family: 'Oswald', sans-serif;
+    font-size: 42px; font-weight: 700;
+    border-radius: 14px;
+    padding: 16px 36px;
+    z-index: 20;
+    display: none;
+    letter-spacing: 6px;
+    border: 2px solid #FFD700;
+    animation: golAnim 0.3s ease;
+  }
+  @keyframes golAnim { from { transform: translate(-50%,-50%) scale(0.5); opacity: 0; } to { transform: translate(-50%,-50%) scale(1); opacity: 1; } }
+
+  /* KONTROL */
+  #kontrol {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .k-btn {
+    padding: 9px 20px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    background: #1a1a1a;
+    color: #ccc;
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px; letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .k-btn:hover { border-color: #FFD700; color: #FFD700; background: #1c1800; }
+  .k-btn.oyna { border-color: #4CAF50; color: #4CAF50; }
+  .k-btn.oyna:hover { background: #0d1f0d; }
+
+  /* GOL GEÇMİŞİ */
+  #gol-gecmis {
+    background: #111; border: 1px solid #222; border-radius: 10px;
+    padding: 10px 14px; min-height: 44px;
+    font-size: 13px; color: #888;
+  }
+  #gol-gecmis .gol-item { color: #FFD700; margin-bottom: 2px; }
+
+  /* SONUÇ EKRANI */
+  #sonuc-ekran {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 100;
+    align-items: center; justify-content: center;
+    flex-direction: column;
+  }
+  #sonuc-ekran.goster { display: flex; }
+  #sonuc-kutu {
+    background: #111; border: 2px solid #FFD700;
+    border-radius: 16px; padding: 36px 48px;
+    text-align: center;
+  }
+  #sonuc-kutu h2 { font-family: 'Oswald', sans-serif; font-size: 32px; color: #FFD700; letter-spacing: 4px; margin-bottom: 8px; }
+  #sonuc-skor { font-family: 'Oswald', sans-serif; font-size: 52px; font-weight: 700; color: #fff; margin: 12px 0; }
+  #sonuc-kazanan { font-size: 16px; color: #aaa; margin-bottom: 20px; }
+
+  @media (max-width: 560px) {
+    #takim-panel { grid-template-columns: 1fr; }
+    #saha { height: 300px; }
+    #gol-mesaji { font-size: 28px; padding: 12px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="baslik">
+  <h1>⚽ SÜPER LİG</h1>
+  <p>TÜRK FUTBOL SİMÜLATÖRÜ</p>
+</div>
+
+<div id="ana">
+
+  <!-- SKOR -->
+  <div id="skor-panel">
+    <div class="takim-blok" id="ev-blok">
+      <div class="takim-logo" id="ev-logo">FB</div>
+      <div>
+        <div class="takim-adi" id="ev-adi">Fenerbahçe</div>
+        <div class="takim-sehir" id="ev-sehir">İstanbul</div>
+      </div>
+    </div>
+    <div id="skor-merkez">
+      <div id="skor-sayi">0 – 0</div>
+      <div id="sure-label">BAŞLAMADI</div>
+    </div>
+    <div class="takim-blok sag" id="dep-blok">
+      <div class="takim-logo" id="dep-logo">BJK</div>
+      <div style="text-align:right">
+        <div class="takim-adi" id="dep-adi">Beşiktaş</div>
+        <div class="takim-sehir" id="dep-sehir">İstanbul</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAKİM SEÇ -->
+  <div id="takim-panel">
+    <div class="takim-sec-grup">
+      <div class="takim-sec-baslik">EV TAKIMI</div>
+      <div class="takim-butonlar" id="ev-butonlar"></div>
+    </div>
+    <div class="takim-sec-grup">
+      <div class="takim-sec-baslik">DEPLASMAN</div>
+      <div class="takim-butonlar" id="dep-butonlar"></div>
+    </div>
+  </div>
+
+  <!-- SAHA -->
+  <div id="saha-kap">
+    <div id="saha">
+      <div class="s-cizgi s-orta-v"></div>
+      <div class="s-orta-d"></div>
+      <div class="s-orta-n"></div>
+      <div class="s-kale sol"></div>
+      <div class="s-kale sag"></div>
+      <div class="s-ceza sol"></div>
+      <div class="s-ceza sag"></div>
+      <div class="takim-etiket sol" id="etiket-ev">Fenerbahçe</div>
+      <div class="takim-etiket sag" id="etiket-dep">Beşiktaş</div>
+      <div id="sure-goster">00:00</div>
+      <div id="gol-mesaji">⚽ GOL!</div>
+    </div>
+  </div>
+
+  <!-- KONTROL -->
+  <div id="kontrol">
+    <button class="k-btn oyna" onclick="baslat()">▶ BAŞLAT</button>
+    <button class="k-btn" onclick="durdur()">⏸ DURDUR</button>
+    <button class="k-btn" onclick="sifirla()">↺ SIFIRLA</button>
+    <button class="k-btn" onclick="rastgeleGol()">⚽ GOL!</button>
+    <button class="k-btn" onclick="oyunuBitir()">🏁 BİTİR</button>
+  </div>
+
+  <!-- GOL GEÇMİŞİ -->
+  <div id="gol-gecmis">
+    <span style="color:#555; font-size:11px; letter-spacing:2px;">GOL GEÇMİŞİ</span>
+  </div>
+
+</div>
+
+<!-- SONUÇ -->
+<div id="sonuc-ekran">
+  <div id="sonuc-kutu">
+    <h2>MAÇ SONU</h2>
+    <div id="sonuc-skor">0 – 0</div>
+    <div id="sonuc-kazanan">Berabere!</div>
+    <button class="k-btn" onclick="yeniMac()" style="margin-top:16px; padding:10px 28px;">YENİ MAÇ</button>
+  </div>
+</div>
+
+<script>
+const takimlar = {
+  fenerbahce:  { isim: 'Fenerbahçe',  sehir: 'İstanbul',  renk: '#003399', ikinci: '#FFD700', kisa: 'FB',  logo: 'FB' },
+  galatasaray: { isim: 'Galatasaray', sehir: 'İstanbul',  renk: '#C8102E', ikinci: '#FFB81C', kisa: 'GS',  logo: 'GS' },
+  besiktas:    { isim: 'Beşiktaş',    sehir: 'İstanbul',  renk: '#1a1a1a', ikinci: '#ffffff', kisa: 'BJK', logo: 'BJK' },
+  trabzonspor: { isim: 'Trabzonspor', sehir: 'Trabzon',   renk: '#5B1F8C', ikinci: '#E05A1E', kisa: 'TS',  logo: 'TS' },
+  basaksehir:  { isim: 'Başakşehir',  sehir: 'İstanbul',  renk: '#F97316', ikinci: '#1a1a2e', kisa: 'IBFK',logo: 'İBFK'},
+  sivasspor:   { isim: 'Sivasspor',   sehir: 'Sivas',     renk: '#CC0000', ikinci: '#FFD700', kisa: 'SS',  logo: 'SS' },
+  kasimpasa:   { isim: 'Kasımpaşa',   sehir: 'İstanbul',  renk: '#003399', ikinci: '#FF6600', kisa: 'KSP', logo: 'KSP'},
+  konyaspor:   { isim: 'Konyaspor',   sehir: 'Konya',     renk: '#005500', ikinci: '#FFFFFF', kisa: 'KS',  logo: 'KS' },
+  antalyaspor: { isim: 'Antalyaspor', sehir: 'Antalya',   renk: '#D00000', ikinci: '#FFFFFF', kisa: 'ANT', logo: 'ANT'},
+  kayserispor: { isim: 'Kayserispor', sehir: 'Kayseri',   renk: '#CC0000', ikinci: '#FFFF00', kisa: 'KVK', logo: 'KVK'},
+  alanyaspor:  { isim: 'Alanyaspor',  sehir: 'Alanya',    renk: '#FF6600', ikinci: '#000000', kisa: 'ALA', logo: 'ALA'},
+  rizespor:    { isim: 'Çaykur Rizespor', sehir: 'Rize',  renk: '#006600', ikinci: '#FFFFFF', kisa: 'RZS', logo: 'RZS'},
+};
+
+let secili = { ev: 'fenerbahce', dep: 'besiktas' };
+let skor = { ev: 0, dep: 0 };
+let sure = 0;
+let interval = null;
+let futbolcular = [];
+let topX = 0, topY = 0;
+let dragging = false, dragObj = null, dragOffX = 0, dragOffY = 0;
+let golLog = [];
+let golKilitli = false;
+
+const pozEv = [
+  {r:9,y:50},{r:18,y:18},{r:18,y:43},{r:18,y:68},{r:28,y:12},{r:28,y:33},{r:28,y:58},{r:28,y:78},{r:38,y:22},{r:38,y:52},{r:38,y:74}
+];
+const pozDep = [
+  {r:91,y:50},{r:82,y:18},{r:82,y:43},{r:82,y:68},{r:72,y:12},{r:72,y:33},{r:72,y:58},{r:72,y:78},{r:62,y:22},{r:62,y:52},{r:62,y:74}
+];
+const pozIsim = ['KL','STK','STK','STK','ORT','ORT','ORT','ORT','FOR','FOR','FOR'];
+
+function sahaBoyut() {
+  const s = document.getElementById('saha');
+  return { w: s.offsetWidth || 800, h: s.offsetHeight || 400 };
+}
+
+function butonlarOlustur() {
+  ['ev','dep'].forEach(t => {
+    const kap = document.getElementById(t+'-butonlar');
+    kap.innerHTML = '';
+    Object.entries(takimlar).forEach(([id, tk]) => {
+      const btn = document.createElement('button');
+      btn.className = 't-btn' + (secili[t] === id ? ' aktif' : '');
+      btn.innerHTML = `<span class="t-renk-dot" style="background:${tk.renk};border:1px solid ${tk.ikinci};"></span>${tk.isim}`;
+      btn.onclick = () => takimSec(t, id);
+      kap.appendChild(btn);
+    });
+  });
+}
+
+function takimSec(taraf, id) {
+  secili[taraf] = id;
+  butonlarOlustur();
+  sahaOlustur();
+  panelGuncelle();
+}
+
+function panelGuncelle() {
+  const ev = takimlar[secili.ev];
+  const dep = takimlar[secili.dep];
+  document.getElementById('ev-logo').textContent = ev.logo;
+  document.getElementById('ev-logo').style.background = ev.renk;
+  document.getElementById('ev-logo').style.color = ev.ikinci;
+  document.getElementById('ev-adi').textContent = ev.isim;
+  document.getElementById('ev-sehir').textContent = ev.sehir;
+  document.getElementById('dep-logo').textContent = dep.logo;
+  document.getElementById('dep-logo').style.background = dep.renk;
+  document.getElementById('dep-logo').style.color = dep.ikinci;
+  document.getElementById('dep-adi').textContent = dep.isim;
+  document.getElementById('dep-sehir').textContent = dep.sehir;
+  document.getElementById('etiket-ev').textContent = ev.isim;
+  document.getElementById('etiket-ev').style.color = ev.ikinci;
+  document.getElementById('etiket-dep').textContent = dep.isim;
+  document.getElementById('etiket-dep').style.color = dep.ikinci;
+  skorGoster();
+}
+
+function sahaOlustur() {
+  const saha = document.getElementById('saha');
+  saha.querySelectorAll('.futbolcu,.top').forEach(e => e.remove());
+  futbolcular = [];
+  const {w,h} = sahaBoyut();
+  const ev = takimlar[secili.ev];
+  const dep = takimlar[secili.dep];
+
+  const ekle = (poz, tk, taraf) => {
+    poz.forEach((p, i) => {
+      const el = document.createElement('div');
+      el.className = 'futbolcu';
+      el.style.background = tk.renk;
+      el.style.borderColor = tk.ikinci;
+      el.style.color = tk.ikinci;
+      const x = p.r/100*w, y = p.y/100*h;
+      el.style.left = (x-17)+'px'; el.style.top = (y-17)+'px';
+      el.textContent = pozIsim[i];
+      el.dataset.takim = taraf;
+      saha.appendChild(el);
+      futbolcular.push({el, tx:x, ty:y, taraf});
+      const idx = futbolcular.length-1;
+      dinleFutbolcu(el, idx);
+    });
+  };
+  ekle(pozEv, ev, 'ev');
+  ekle(pozDep, dep, 'dep');
+
+  const tel = document.createElement('div');
+  tel.className = 'top'; tel.id = 'top-el';
+  topX = w/2; topY = h/2;
+  tel.style.left = (topX-10)+'px'; tel.style.top = (topY-10)+'px';
+  saha.appendChild(tel);
+  dinleTop(tel);
+  panelGuncelle();
+}
+
+function dinleFutbolcu(el, idx) {
+  const down = (cx, cy) => { dragObj={type:'f',idx}; const r=document.getElementById('saha').getBoundingClientRect(); dragOffX=cx-r.left-futbolcular[idx].tx; dragOffY=cy-r.top-futbolcular[idx].ty; dragging=true; };
+  el.addEventListener('mousedown', e => { e.preventDefault(); down(e.clientX,e.clientY); });
+  el.addEventListener('touchstart', e => { e.preventDefault(); const t=e.touches[0]; down(t.clientX,t.clientY); },{passive:false});
+}
+function dinleTop(el) {
+  const down = (cx,cy) => { dragObj={type:'top'}; const r=document.getElementById('saha').getBoundingClientRect(); dragOffX=cx-r.left-topX; dragOffY=cy-r.top-topY; dragging=true; };
+  el.addEventListener('mousedown', e => { e.preventDefault(); down(e.clientX,e.clientY); });
+  el.addEventListener('touchstart', e => { e.preventDefault(); const t=e.touches[0]; down(t.clientX,t.clientY); },{passive:false});
+}
+
+function getXY(e) { return e.touches ? {cx:e.touches[0].clientX,cy:e.touches[0].clientY} : {cx:e.clientX,cy:e.clientY}; }
+
+document.addEventListener('mousemove', mv);
+document.addEventListener('touchmove', mv, {passive:false});
+function mv(e) {
+  if (!dragging||!dragObj) return;
+  if (e.cancelable) e.preventDefault();
+  const {cx,cy} = getXY(e);
+  const r = document.getElementById('saha').getBoundingClientRect();
+  const {w,h} = sahaBoyut();
+  let nx=cx-r.left-dragOffX, ny=cy-r.top-dragOffY;
+  nx=Math.max(0,Math.min(w,nx)); ny=Math.max(0,Math.min(h,ny));
+  if (dragObj.type==='top') {
+    topX=nx; topY=ny;
+    const t=document.getElementById('top-el');
+    if(t){t.style.left=(topX-10)+'px';t.style.top=(topY-10)+'px';}
+    golKontrol();
+  } else {
+    const f=futbolcular[dragObj.idx];
+    f.tx=nx; f.ty=ny;
+    f.el.style.left=(nx-17)+'px'; f.el.style.top=(ny-17)+'px';
+  }
+}
+document.addEventListener('mouseup', ()=>{dragging=false;dragObj=null;});
+document.addEventListener('touchend', ()=>{dragging=false;dragObj=null;});
+
+function golKontrol() {
+  if (golKilitli) return;
+  const {w,h} = sahaBoyut();
+  const ku=h*0.30, ka=h*0.70;
+  if (topX < w*0.045 && topY>ku && topY<ka) golYap('dep');
+  else if (topX > w*0.955 && topY>ku && topY<ka) golYap('ev');
+}
+
+function golYap(kim) {
+  golKilitli = true;
+  skor[kim]++;
+  const m = Math.floor(sure/60), s2=sure%60;
+  const dk = String(m).padStart(2,'0')+':'+String(s2).padStart(2,'0');
+  const tk = takimlar[secili[kim]];
+  golLog.push({ takim: tk.isim, dk, renk: tk.ikinci });
+  golGecmisGuncelle();
+  skorGoster();
+  const gm = document.getElementById('gol-mesaji');
+  gm.textContent = '⚽ GOL! — '+tk.kisa;
+  gm.style.color = tk.ikinci;
+  gm.style.display = 'block';
+  setTimeout(()=>{ gm.style.display='none'; merkezTop(); golKilitli=false; }, 2200);
+}
+
+function merkezTop() {
+  const {w,h} = sahaBoyut();
+  topX=w/2; topY=h/2;
+  const t=document.getElementById('top-el');
+  if(t){t.style.left=(topX-10)+'px';t.style.top=(topY-10)+'px';}
+}
+
+function golGecmisGuncelle() {
+  const el = document.getElementById('gol-gecmis');
+  if (!golLog.length) { el.innerHTML='<span style="color:#555;font-size:11px;letter-spacing:2px;">GOL GEÇMİŞİ</span>'; return; }
+  el.innerHTML = '<span style="color:#555;font-size:11px;letter-spacing:2px;">GOL GEÇMİŞİ</span><br>' +
+    golLog.map(g => `<div class="gol-item" style="color:${g.renk}">⚽ ${g.takim} — ${g.dk}</div>`).join('');
+}
+
+function skorGoster() {
+  document.getElementById('skor-sayi').textContent = skor.ev + ' – ' + skor.dep;
+}
+
+function baslat() {
+  if (interval) return;
+  document.getElementById('sure-label').textContent = 'DEVAM EDİYOR';
+  interval = setInterval(()=>{
+    sure++;
+    const m=Math.floor(sure/60), s2=sure%60;
+    document.getElementById('sure-goster').textContent = String(m).padStart(2,'0')+':'+String(s2).padStart(2,'0');
+    if (sure>=5400) { durdur(); oyunuBitir(); return; }
+    simule();
+  },1000);
+}
+
+function durdur() {
+  clearInterval(interval); interval=null;
+  document.getElementById('sure-label').textContent = 'DURAKLATILDI';
+}
+
+function sifirla() {
+  durdur(); sure=0; skor={ev:0,dep:0}; golLog=[];
+  document.getElementById('sure-goster').textContent='00:00';
+  document.getElementById('sure-label').textContent='BAŞLAMADI';
+  golGecmisGuncelle(); skorGoster(); sahaOlustur();
+}
+
+function simule() {
+  const {w,h} = sahaBoyut();
+  futbolcular.forEach(f=>{
+    f.tx = Math.max(17,Math.min(w-17, f.tx+(Math.random()-0.5)*14));
+    f.ty = Math.max(17,Math.min(h-17, f.ty+(Math.random()-0.5)*10));
+    f.el.style.left=(f.tx-17)+'px'; f.el.style.top=(f.ty-17)+'px';
+  });
+  topX=Math.max(10,Math.min(w-10,topX+(Math.random()-0.5)*22));
+  topY=Math.max(10,Math.min(h-10,topY+(Math.random()-0.5)*16));
+  const t=document.getElementById('top-el');
+  if(t){t.style.left=(topX-10)+'px';t.style.top=(topY-10)+'px';}
+}
+
+function rastgeleGol() {
+  if (golKilitli) return;
+  golYap(Math.random()<0.5?'ev':'dep');
+}
+
+function oyunuBitir() {
+  durdur();
+  document.getElementById('sonuc-skor').textContent = skor.ev+' – '+skor.dep;
+  let msg;
+  if (skor.ev>skor.dep) msg = takimlar[secili.ev].isim + ' KAZANDI! 🏆';
+  else if (skor.dep>skor.ev) msg = takimlar[secili.dep].isim + ' KAZANDI! 🏆';
+  else msg = 'BERABERE! 🤝';
+  document.getElementById('sonuc-kazanan').textContent = msg;
+  document.getElementById('sonuc-ekran').classList.add('goster');
+}
+
+function yeniMac() {
+  document.getElementById('sonuc-ekran').classList.remove('goster');
+  sifirla();
+}
+
+butonlarOlustur();
+window.addEventListener('load', ()=>{ setTimeout(sahaOlustur, 80); });
+window.addEventListener('resize', sahaOlustur);
+</script>
+</body>
+</html>

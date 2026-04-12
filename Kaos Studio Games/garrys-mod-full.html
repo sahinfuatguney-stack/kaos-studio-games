@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garry's Mod - COMPLETE EDITION</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial; overflow: hidden; background: #000; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        
+        .hud { position: fixed; z-index: 100; color: white; }
+        .top-bar { top: 15px; left: 15px; background: rgba(0,0,0,0.85); padding: 18px 25px; border-radius: 10px; border: 2px solid #4CAF50; pointer-events: none; }
+        .info { font-size: 22px; font-weight: bold; color: #4CAF50; margin-bottom: 8px; }
+        .help { font-size: 13px; line-height: 1.6; }
+        
+        .stats { top: 15px; right: 15px; background: rgba(0,0,0,0.85); padding: 18px; border-radius: 10px; border: 2px solid #ff4444; pointer-events: none; min-width: 200px; }
+        .hp-bar { background: #333; height: 22px; border-radius: 5px; margin: 10px 0; border: 2px solid #ff4444; overflow: hidden; }
+        .hp-fill { background: linear-gradient(90deg, #ff0000, #00ff00); height: 100%; text-align: center; line-height: 22px; font-weight: bold; font-size: 13px; transition: width 0.3s; }
+        
+        .menu { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); padding: 35px; border-radius: 15px; display: none; max-height: 88vh; overflow-y: auto; min-width: 700px; border: 3px solid #4CAF50; z-index: 1000; }
+        .menu.active { display: block; }
+        .menu h2 { color: #4CAF50; margin-bottom: 25px; text-align: center; font-size: 30px; }
+        .cat { margin-bottom: 30px; }
+        .cat h3 { color: #4CAF50; margin-bottom: 15px; font-size: 20px; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+        .item { background: rgba(76,175,80,0.2); padding: 18px 10px; border-radius: 10px; text-align: center; cursor: pointer; transition: 0.2s; border: 2px solid transparent; color: white; }
+        .item:hover { background: rgba(76,175,80,0.5); transform: scale(1.05); border-color: #4CAF50; }
+        .icon { font-size: 32px; margin-bottom: 8px; }
+        
+        .tools { position: fixed; right: 15px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.85); padding: 15px; border-radius: 15px; z-index: 100; border: 2px solid #4CAF50; }
+        .tool { width: 65px; height: 65px; margin: 10px 0; background: rgba(255,255,255,0.1); border: 2px solid transparent; border-radius: 10px; font-size: 30px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; color: white; }
+        .tool:hover { background: rgba(76,175,80,0.3); transform: scale(1.1); }
+        .tool.active { border-color: #4CAF50; background: rgba(76,175,80,0.6); }
+        
+        .ctrl { position: fixed; bottom: 15px; left: 15px; background: rgba(0,0,0,0.85); padding: 15px 20px; border-radius: 10px; font-size: 12px; color: #ddd; pointer-events: none; border: 2px solid #4CAF50; }
+        .ctrl div { margin: 4px 0; }
+        .key { background: rgba(76,175,80,0.6); padding: 3px 8px; border-radius: 4px; font-weight: bold; color: white; margin: 0 3px; }
+        
+        .cross { position: fixed; top: 50%; left: 50%; pointer-events: none; z-index: 50; }
+        .cross::before, .cross::after { content: ''; position: absolute; background: #4CAF50; box-shadow: 0 0 5px #4CAF50; }
+        .cross::before { width: 2px; height: 20px; left: -1px; top: -10px; }
+        .cross::after { width: 20px; height: 2px; left: -10px; top: -1px; }
+        
+        .msg { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); padding: 25px 50px; border-radius: 12px; font-size: 20px; color: #4CAF50; border: 3px solid #4CAF50; display: none; z-index: 2000; }
+        .drive { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: rgba(76,175,80,0.95); padding: 12px 35px; border-radius: 8px; font-size: 18px; font-weight: bold; border: 2px solid white; display: none; z-index: 150; }
+        .flying { position: fixed; top: 90px; left: 50%; transform: translateX(-50%); background: rgba(255,165,0,0.95); padding: 12px 35px; border-radius: 8px; font-size: 18px; font-weight: bold; border: 2px solid white; display: none; z-index: 150; }
+        .jump-indicator { position: fixed; bottom: 60px; right: 15px; background: rgba(0,255,0,0.8); padding: 8px 18px; border-radius: 8px; font-size: 15px; font-weight: bold; display: none; z-index: 150; }
+        
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-thumb { background: #4CAF50; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div class="cross"></div>
+
+    <div class="hud top-bar">
+        <div class="info" id="info">Physics Gun</div>
+        <div class="help" id="help">Sol Tık Basılı Tut: Grab ve Taşı<br>Sağ Tık: Fırlat • Q: Menu • TAB: Silah</div>
+    </div>
+
+    <div class="hud stats">
+        <div style="font-size: 15px; color: #ff4444; font-weight: bold;">❤️ Can: <span id="hp">100</span></div>
+        <div class="hp-bar"><div class="hp-fill" id="hpbar" style="width:100%">100 HP</div></div>
+        <div style="margin-top: 12px; font-size: 14px; color: #ffaa00;">🔫 <span id="wpn">Pistol</span></div>
+        <div style="font-size: 14px; color: #ffaa00; margin-top: 5px;">📦 <span id="ammo">12</span> / <span id="res">120</span></div>
+    </div>
+
+    <div class="drive" id="drv">🚗 ARABA SÜRÜYORSUN - F ile in</div>
+    <div class="flying" id="fly">✈️ UÇUŞ MODU - E yukarı / C aşağı</div>
+    <div class="jump-indicator" id="jumpind">⬆️ ZIPLADI!</div>
+
+    <div class="menu" id="menu">
+        <h2>🎮 SPAWN MENU</h2>
+        
+        <div class="cat">
+            <h3>🚗 ARABALAR (F ile sür)</h3>
+            <div class="grid">
+                <div class="item" data-t="car1"><div class="icon">🏎️</div>Spor Araba</div>
+                <div class="item" data-t="car2"><div class="icon">🚙</div>SUV</div>
+                <div class="item" data-t="car3"><div class="icon">🚚</div>Pickup</div>
+                <div class="item" data-t="car4"><div class="icon">🚐</div>Minibüs</div>
+                <div class="item" data-t="car5"><div class="icon">🚓</div>Polis</div>
+            </div>
+        </div>
+
+        <div class="cat">
+            <h3>🧟 DÜŞMANLAR (Sana saldırırlar!)</h3>
+            <div class="grid">
+                <div class="item" data-t="npc1"><div class="icon">🧟</div>Zombi</div>
+                <div class="item" data-t="npc2"><div class="icon">😈</div>Düşman</div>
+                <div class="item" data-t="npc3"><div class="icon">⚡</div>Hızlı Zombi</div>
+                <div class="item" data-t="npc4"><div class="icon">💪</div>Tank Zombi</div>
+                <div class="item" data-t="npc5"><div class="icon">💥</div>Bombacı</div>
+                <div class="item" data-t="npc6"><div class="icon">🔥</div>Ateş Zombi</div>
+                <div class="item" data-t="npc7"><div class="icon">🧊</div>Buz Zombi</div>
+                <div class="item" data-t="npc8"><div class="icon">☠️</div>Boss Zombi</div>
+            </div>
+        </div>
+
+        <div class="cat">
+            <h3>📦 TEMEL OBJELER</h3>
+            <div class="grid">
+                <div class="item" data-t="box"><div class="icon">📦</div>Kutu</div>
+                <div class="item" data-t="ball"><div class="icon">⚽</div>Top</div>
+                <div class="item" data-t="barrel"><div class="icon">🛢️</div>Varil</div>
+                <div class="item" data-t="cone"><div class="icon">🚧</div>Trafik Konisi</div>
+                <div class="item" data-t="tire"><div class="icon">⚙️</div>Tekerlek</div>
+                <div class="item" data-t="crate"><div class="icon">📦</div>Sandık</div>
+                <div class="item" data-t="metal"><div class="icon">🔩</div>Metal Kutu</div>
+                <div class="item" data-t="wood"><div class="icon">🪵</div>Tahta Kutu</div>
+            </div>
+        </div>
+
+        <div class="cat">
+            <h3>🏗️ İNŞAAT</h3>
+            <div class="grid">
+                <div class="item" data-t="plank"><div class="icon">📏</div>Tahta</div>
+                <div class="item" data-t="beam"><div class="icon">📐</div>Kiriş</div>
+                <div class="item" data-t="platform"><div class="icon">⬜</div>Platform</div>
+                <div class="item" data-t="bigplatform"><div class="icon">⬛</div>Büyük Platform</div>
+                <div class="item" data-t="wall"><div class="icon">🧱</div>Duvar</div>
+                <div class="item" data-t="pillar"><div class="icon">🏛️</div>Direk</div>
+                <div class="item" data-t="ramp"><div class="icon">📐</div>Rampa</div>
+                <div class="item" data-t="stairs"><div class="icon">🪜</div>Merdiven</div>
+            </div>
+        </div>
+
+        <div class="cat">
+            <h3>🎨 RENKLİ OBJELER</h3>
+            <div class="grid">
+                <div class="item" data-t="red"><div class="icon" style="color:#ff4444">📦</div>Kırmızı</div>
+                <div class="item" data-t="blue"><div class="icon" style="color:#4444ff">📦</div>Mavi</div>
+                <div class="item" data-t="green"><div class="icon" style="color:#44ff44">📦</div>Yeşil</div>
+                <div class="item" data-t="yellow"><div class="icon" style="color:#ffff44">⚽</div>Sarı</div>
+                <div class="item" data-t="purple"><div class="icon" style="color:#ff44ff">📦</div>Mor</div>
+                <div class="item" data-t="orange"><div class="icon" style="color:#ff8844">⚽</div>Turuncu</div>
+                <div class="item" data-t="cyan"><div class="icon" style="color:#44ffff">⚽</div>Cyan</div>
+                <div class="item" data-t="pink"><div class="icon" style="color:#ff88ff">📦</div>Pembe</div>
+            </div>
+        </div>
+
+        <div class="cat">
+            <h3>🏙️ YAPILAR</h3>
+            <div class="grid">
+                <div class="item" data-t="building"><div class="icon">🏢</div>Bina</div>
+                <div class="item" data-t="tower"><div class="icon">🗼</div>Kule</div>
+                <div class="item" data-t="house"><div class="icon">🏠</div>Ev</div>
+                <div class="item" data-t="warehouse"><div class="icon">🏭</div>Depo</div>
+            </div>
+        </div>
+
+        <div class="cat">
+            <h3>🎯 YENİ OBJELER</h3>
+            <div class="grid">
+                <div class="item" data-t="chair"><div class="icon">🪑</div>Sandalye</div>
+                <div class="item" data-t="table"><div class="icon">🪑</div>Masa</div>
+                <div class="item" data-t="lamp"><div class="icon">💡</div>Lamba</div>
+                <div class="item" data-t="tv"><div class="icon">📺</div>TV</div>
+                <div class="item" data-t="door"><div class="icon">🚪</div>Kapı</div>
+                <div class="item" data-t="window"><div class="icon">🪟</div>Pencere</div>
+                <div class="item" data-t="fence"><div class="icon">🚧</div>Çit</div>
+                <div class="item" data-t="rock"><div class="icon">🪨</div>Kaya</div>
+                <div class="item" data-t="tree"><div class="icon">🌲</div>Ağaç</div>
+                <div class="item" data-t="bush"><div class="icon">🌳</div>Çalı</div>
+            </div>
+        </div>
+
+        <div class="cat">
+            <h3>⚡ ÖZEL OBJELER</h3>
+            <div class="grid">
+                <div class="item" data-t="trampoline"><div class="icon">🎪</div>Trambolin</div>
+                <div class="item" data-t="explosive"><div class="icon">💣</div>Patlayıcı</div>
+                <div class="item" data-t="spring"><div class="icon">🌀</div>Yay</div>
+                <div class="item" data-t="magnet"><div class="icon">🧲</div>Mıknatıs</div>
+                <div class="item" data-t="glass"><div class="icon">⬜</div>Cam Duvar</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tools">
+        <button class="tool active" data-t="physgun">🔫</button>
+        <button class="tool" data-t="weapon">⚔️</button>
+        <button class="tool" data-t="remover">🗑️</button>
+        <button class="tool" data-t="rope">🪢</button>
+    </div>
+
+    <div class="ctrl">
+        <div><span class="key">Q</span> Menu <span class="key">TAB</span> Silah Modu</div>
+        <div><span class="key">F</span> Arabaya Bin/İn</div>
+        <div><span class="key">E</span> Uç (Yukarı) <span class="key">C</span> İn (Aşağı)</div>
+        <div><span class="key">1-4</span> Silah Değiştir <span class="key">R</span> Şarjör</div>
+        <div><span class="key">WASD</span> Hareket <span class="key">SHIFT</span> Koş</div>
+        <div><span class="key">SPACE</span> Zıpla <span class="key">CTRL</span> Çömel</div>
+        <div><span class="key">Sol Tık</span> Ateş/Grab <span class="key">Sağ</span> Fırlat</div>
+    </div>
+
+    <div class="msg" id="msg"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, 100, 500);
+
+        const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+        camera.position.set(0, 10, 30);
+
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.shadowMap.enabled = true;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+        sun.position.set(50, 100, 50);
+        sun.castShadow = true;
+        sun.shadow.mapSize.width = 2048;
+        sun.shadow.mapSize.height = 2048;
+        scene.add(sun);
+
+        const world = new CANNON.World();
+        world.gravity.set(0, -20, 0);
+
+        // YEŞIL ZEMİN
+        const groundMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(400, 400),
+            new THREE.MeshStandardMaterial({ color: 0x2d5016, roughness: 0.9 })
+        );
+        groundMesh.rotation.x = -Math.PI / 2;
+        groundMesh.receiveShadow = true;
+        scene.add(groundMesh);
+
+        const groundBody = new CANNON.Body({ mass: 0 });
+        groundBody.addShape(new CANNON.Plane());
+        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+        world.addBody(groundBody);
+
+        const grid = new THREE.GridHelper(400, 150, 0x000000, 0x333333);
+        grid.material.opacity = 0.3;
+        grid.material.transparent = true;
+        scene.add(grid);
+
+        const S = {
+            tool: 'physgun',
+            grab: null,
+            grabDist: 8,
+            menu: false,
+            objs: [],
+            npcs: [],
+            cars: [],
+            keys: {},
+            ray: new THREE.Raycaster(),
+            locked: false,
+            
+            // Rope tool için
+            ropeFirst: null,
+            ropes: [],
+            
+            // YENİ: Zıplama ve uçma
+            velocity: new THREE.Vector3(),
+            onGround: true,
+            jumping: false,
+            flying: false,
+            
+            hp: 100,
+            wpn: 'pistol',
+            wpns: {
+                pistol: { dmg:15, rate:300, ammo:12, max:12, res:120, name:'Pistol' },
+                smg: { dmg:10, rate:100, ammo:30, max:30, res:180, name:'SMG' },
+                rifle: { dmg:25, rate:150, ammo:30, max:30, res:150, name:'Rifle' },
+                shotgun: { dmg:50, rate:800, ammo:6, max:6, res:48, name:'Shotgun' }
+            },
+            lastShot: 0,
+            
+            car: null,
+            driving: false
+        };
+
+        let pitch = 0, yaw = 0;
+
+        // PROP TEMPLATELERİ - HER BİRİ FARKLI!
+        const PROPS = {
+            // Kutu ve objeler
+            box: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(2,2,2), new THREE.MeshStandardMaterial({color:0x8b4513,roughness:0.7})),
+                body: () => new CANNON.Body({mass:5, shape:new CANNON.Box(new CANNON.Vec3(1,1,1))})
+            },
+            ball: { 
+                mesh: () => new THREE.Mesh(new THREE.SphereGeometry(1,20,20), new THREE.MeshStandardMaterial({color:0xff4444,roughness:0.3,metalness:0.5})),
+                body: () => new CANNON.Body({mass:3, shape:new CANNON.Sphere(1)})
+            },
+            barrel: { 
+                mesh: () => new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,2,20), new THREE.MeshStandardMaterial({color:0x8b4513,roughness:0.8})),
+                body: () => new CANNON.Body({mass:10, shape:new CANNON.Cylinder(0.8,0.8,2,20)})
+            },
+            cone: { 
+                mesh: () => new THREE.Mesh(new THREE.ConeGeometry(0.8,1.5,16), new THREE.MeshStandardMaterial({color:0xff6600,roughness:0.7})),
+                body: () => new CANNON.Body({mass:2, shape:new CANNON.Cylinder(0.01,0.8,1.5,16)})
+            },
+            tire: { 
+                mesh: () => new THREE.Mesh(new THREE.CylinderGeometry(1,1,0.5,32), new THREE.MeshStandardMaterial({color:0x222222,roughness:0.9})),
+                body: () => new CANNON.Body({mass:5, shape:new CANNON.Cylinder(1,1,0.5,32)})
+            },
+            crate: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(2,2,2), new THREE.MeshStandardMaterial({color:0xdaa520,roughness:0.8})),
+                body: () => new CANNON.Body({mass:8, shape:new CANNON.Box(new CANNON.Vec3(1,1,1))})
+            },
+            metal: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.5), new THREE.MeshStandardMaterial({color:0x888888,metalness:0.8,roughness:0.3})),
+                body: () => new CANNON.Body({mass:15, shape:new CANNON.Box(new CANNON.Vec3(0.75,0.75,0.75))})
+            },
+            wood: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(2,1.5,2), new THREE.MeshStandardMaterial({color:0x8b7355,roughness:0.9})),
+                body: () => new CANNON.Body({mass:4, shape:new CANNON.Box(new CANNON.Vec3(1,0.75,1))})
+            },
+            
+            // İnşaat
+            plank: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,5), new THREE.MeshStandardMaterial({color:0x8b4513,roughness:0.8})),
+                body: () => new CANNON.Body({mass:3, shape:new CANNON.Box(new CANNON.Vec3(0.15,0.15,2.5))})
+            },
+            beam: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,8), new THREE.MeshStandardMaterial({color:0x708090,metalness:0.6})),
+                body: () => new CANNON.Body({mass:10, shape:new CANNON.Box(new CANNON.Vec3(0.25,0.25,4))})
+            },
+            platform: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(5,0.5,5), new THREE.MeshStandardMaterial({color:0x555555,roughness:0.7})),
+                body: () => new CANNON.Body({mass:12, shape:new CANNON.Box(new CANNON.Vec3(2.5,0.25,2.5))})
+            },
+            bigplatform: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(10,0.5,10), new THREE.MeshStandardMaterial({color:0x444444,roughness:0.7})),
+                body: () => new CANNON.Body({mass:25, shape:new CANNON.Box(new CANNON.Vec3(5,0.25,5))})
+            },
+            wall: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(8,4,0.5), new THREE.MeshStandardMaterial({color:0x888888,roughness:0.8})),
+                body: () => new CANNON.Body({mass:30, shape:new CANNON.Box(new CANNON.Vec3(4,2,0.25))})
+            },
+            pillar: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(1,8,1), new THREE.MeshStandardMaterial({color:0xaaaaaa,roughness:0.7})),
+                body: () => new CANNON.Body({mass:20, shape:new CANNON.Box(new CANNON.Vec3(0.5,4,0.5))})
+            },
+            ramp: { 
+                mesh: () => {
+                    const geo = new THREE.BoxGeometry(5,0.5,8);
+                    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color:0x666666}));
+                    mesh.rotation.x = -0.3;
+                    return mesh;
+                },
+                body: () => new CANNON.Body({mass:15, shape:new CANNON.Box(new CANNON.Vec3(2.5,0.25,4))})
+            },
+            stairs: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(4,4,6), new THREE.MeshStandardMaterial({color:0x777777})),
+                body: () => new CANNON.Body({mass:20, shape:new CANNON.Box(new CANNON.Vec3(2,2,3))})
+            },
+            
+            // Renkli
+            red: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(2,2,2), new THREE.MeshStandardMaterial({color:0xff0000,roughness:0.6})),
+                body: () => new CANNON.Body({mass:5, shape:new CANNON.Box(new CANNON.Vec3(1,1,1))})
+            },
+            blue: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(2,2,2), new THREE.MeshStandardMaterial({color:0x0000ff,roughness:0.6})),
+                body: () => new CANNON.Body({mass:5, shape:new CANNON.Box(new CANNON.Vec3(1,1,1))})
+            },
+            green: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(2,2,2), new THREE.MeshStandardMaterial({color:0x00ff00,roughness:0.6})),
+                body: () => new CANNON.Body({mass:5, shape:new CANNON.Box(new CANNON.Vec3(1,1,1))})
+            },
+            yellow: { 
+                mesh: () => new THREE.Mesh(new THREE.SphereGeometry(1,20,20), new THREE.MeshStandardMaterial({color:0xffff00,roughness:0.4})),
+                body: () => new CANNON.Body({mass:3, shape:new CANNON.Sphere(1)})
+            },
+            purple: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(2,2,2), new THREE.MeshStandardMaterial({color:0xff00ff,roughness:0.6})),
+                body: () => new CANNON.Body({mass:5, shape:new CANNON.Box(new CANNON.Vec3(1,1,1))})
+            },
+            orange: { 
+                mesh: () => new THREE.Mesh(new THREE.SphereGeometry(1,20,20), new THREE.MeshStandardMaterial({color:0xff8800,roughness:0.4})),
+                body: () => new CANNON.Body({mass:3, shape:new CANNON.Sphere(1)})
+            },
+            cyan: { 
+                mesh: () => new THREE.Mesh(new THREE.SphereGeometry(1,20,20), new THREE.MeshStandardMaterial({color:0x00ffff,roughness:0.4})),
+                body: () => new CANNON.Body({mass:3, shape:new CANNON.Sphere(1)})
+            },
+            pink: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(2,2,2), new THREE.MeshStandardMaterial({color:0xff88ff,roughness:0.6})),
+                body: () => new CANNON.Body({mass:5, shape:new CANNON.Box(new CANNON.Vec3(1,1,1))})
+            },
+            
+            // Yapılar
+            building: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(20,20,20), new THREE.MeshStandardMaterial({color:0x8b7355,roughness:0.8})),
+                body: () => new CANNON.Body({mass:0, shape:new CANNON.Box(new CANNON.Vec3(10,10,10))})
+            },
+            tower: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(8,35,8), new THREE.MeshStandardMaterial({color:0x708090,roughness:0.7})),
+                body: () => new CANNON.Body({mass:0, shape:new CANNON.Box(new CANNON.Vec3(4,17.5,4))})
+            },
+            house: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(15,12,15), new THREE.MeshStandardMaterial({color:0xdeb887,roughness:0.8})),
+                body: () => new CANNON.Body({mass:0, shape:new CANNON.Box(new CANNON.Vec3(7.5,6,7.5))})
+            },
+            warehouse: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(25,15,20), new THREE.MeshStandardMaterial({color:0x696969,roughness:0.8})),
+                body: () => new CANNON.Body({mass:0, shape:new CANNON.Box(new CANNON.Vec3(12.5,7.5,10))})
+            },
+            
+            // YENİ OBJELER
+            chair: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(1.5,2,1.5), new THREE.MeshStandardMaterial({color:0x8b4513,roughness:0.8})),
+                body: () => new CANNON.Body({mass:3, shape:new CANNON.Box(new CANNON.Vec3(0.75,1,0.75))})
+            },
+            table: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(3,1,2), new THREE.MeshStandardMaterial({color:0x654321,roughness:0.8})),
+                body: () => new CANNON.Body({mass:8, shape:new CANNON.Box(new CANNON.Vec3(1.5,0.5,1))})
+            },
+            lamp: { 
+                mesh: () => {
+                    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5,2,0.5), new THREE.MeshStandardMaterial({color:0xffff00,emissive:0xffff00,emissiveIntensity:0.5}));
+                    const light = new THREE.PointLight(0xffff00, 1, 10);
+                    light.position.set(0, 1, 0);
+                    mesh.add(light);
+                    return mesh;
+                },
+                body: () => new CANNON.Body({mass:2, shape:new CANNON.Box(new CANNON.Vec3(0.25,1,0.25))})
+            },
+            tv: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(3,2,0.3), new THREE.MeshStandardMaterial({color:0x000000,metalness:0.9,roughness:0.1})),
+                body: () => new CANNON.Body({mass:10, shape:new CANNON.Box(new CANNON.Vec3(1.5,1,0.15))})
+            },
+            door: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(2,4,0.2), new THREE.MeshStandardMaterial({color:0x8b4513,roughness:0.7})),
+                body: () => new CANNON.Body({mass:15, shape:new CANNON.Box(new CANNON.Vec3(1,2,0.1))})
+            },
+            window: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(2,2,0.1), new THREE.MeshStandardMaterial({color:0x88ccff,transparent:true,opacity:0.5,metalness:0.9})),
+                body: () => new CANNON.Body({mass:5, shape:new CANNON.Box(new CANNON.Vec3(1,1,0.05))})
+            },
+            fence: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(5,2,0.2), new THREE.MeshStandardMaterial({color:0x8b7355,roughness:0.8})),
+                body: () => new CANNON.Body({mass:8, shape:new CANNON.Box(new CANNON.Vec3(2.5,1,0.1))})
+            },
+            rock: { 
+                mesh: () => new THREE.Mesh(new THREE.SphereGeometry(1.5,12,10), new THREE.MeshStandardMaterial({color:0x808080,roughness:1})),
+                body: () => new CANNON.Body({mass:20, shape:new CANNON.Sphere(1.5)})
+            },
+            tree: { 
+                mesh: () => {
+                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.7,5,10), new THREE.MeshStandardMaterial({color:0x8b4513}));
+                    const leaves = new THREE.Mesh(new THREE.SphereGeometry(2,10,10), new THREE.MeshStandardMaterial({color:0x228b22}));
+                    leaves.position.y = 4;
+                    trunk.add(leaves);
+                    return trunk;
+                },
+                body: () => new CANNON.Body({mass:0, shape:new CANNON.Cylinder(0.5,0.7,5,10)})
+            },
+            bush: { 
+                mesh: () => new THREE.Mesh(new THREE.SphereGeometry(1.5,10,10), new THREE.MeshStandardMaterial({color:0x228b22,roughness:0.9})),
+                body: () => new CANNON.Body({mass:2, shape:new CANNON.Sphere(1.5)})
+            },
+            trampoline: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(5,0.5,5), new THREE.MeshStandardMaterial({color:0x000000,roughness:0.5})),
+                body: () => new CANNON.Body({mass:15, shape:new CANNON.Box(new CANNON.Vec3(2.5,0.25,2.5))})
+            },
+            explosive: { 
+                mesh: () => new THREE.Mesh(new THREE.SphereGeometry(0.7,20,20), new THREE.MeshStandardMaterial({color:0xff0000,emissive:0xff0000,emissiveIntensity:0.3})),
+                body: () => new CANNON.Body({mass:5, shape:new CANNON.Sphere(0.7)})
+            },
+            spring: { 
+                mesh: () => new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,2,16), new THREE.MeshStandardMaterial({color:0xffaa00,metalness:0.8})),
+                body: () => new CANNON.Body({mass:3, shape:new CANNON.Cylinder(0.5,0.5,2,16)})
+            },
+            magnet: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(1,1,3), new THREE.MeshStandardMaterial({color:0xff0000,metalness:0.9})),
+                body: () => new CANNON.Body({mass:10, shape:new CANNON.Box(new CANNON.Vec3(0.5,0.5,1.5))})
+            },
+            glass: { 
+                mesh: () => new THREE.Mesh(new THREE.BoxGeometry(6,4,0.2), new THREE.MeshStandardMaterial({color:0x88ccff,transparent:true,opacity:0.3,metalness:0.9})),
+                body: () => new CANNON.Body({mass:10, shape:new CANNON.Box(new CANNON.Vec3(3,2,0.1))})
+            }
+        };
+
+        function spawn(type, pos) {
+            if (!PROPS[type]) {
+                console.log('Unknown type:', type);
+                return;
+            }
+            
+            const mesh = PROPS[type].mesh();
+            mesh.position.copy(pos);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            
+            const body = PROPS[type].body();
+            body.position.set(pos.x, pos.y, pos.z);
+            world.addBody(body);
+            
+            const obj = { mesh, body, type };
+            S.objs.push(obj);
+            return obj;
+        }
+
+        // ARABA SPAWN
+        function spawnCar(type, pos) {
+            const cars = {
+                car1: { w:5, h:2, l:3, col:0xff0000, spd:1.2 },
+                car2: { w:5.5, h:2.8, l:3.5, col:0x0066ff, spd:0.9 },
+                car3: { w:6, h:3, l:4, col:0x444444, spd:0.8 },
+                car4: { w:6, h:3.2, l:4, col:0xffffff, spd:0.85 },
+                car5: { w:5, h:2.5, l:3, col:0x000000, spd:1.1 }
+            };
+            const c = cars[type];
+            
+            const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(c.w, c.h, c.l),
+                new THREE.MeshStandardMaterial({ color: c.col, metalness: 0.7, roughness: 0.3 })
+            );
+            mesh.position.copy(pos);
+            mesh.castShadow = true;
+            scene.add(mesh);
+            
+            const body = new CANNON.Body({
+                mass: 150,
+                shape: new CANNON.Box(new CANNON.Vec3(c.w/2, c.h/2, c.l/2)),
+                position: new CANNON.Vec3(pos.x, pos.y, pos.z),
+                linearDamping: 0.3,
+                angularDamping: 0.5
+            });
+            world.addBody(body);
+            
+            const car = { mesh, body, type, spd: c.spd };
+            S.cars.push(car);
+            S.objs.push(car);
+            msg('🚗 Araba spawned! F tuşu ile yaklaş ve bin');
+        }
+
+        // NPC SPAWN - YENİ NPCler eklendi!
+        function spawnNPC(type, pos) {
+            const npcs = {
+                npc1: { col:0x228b22, hp:50, dmg:10, spd:0.08 },
+                npc2: { col:0xff0000, hp:60, dmg:15, spd:0.1 },
+                npc3: { col:0xffaa00, hp:30, dmg:8, spd:0.15 },
+                npc4: { col:0x8b0000, hp:150, dmg:25, spd:0.05 },
+                npc5: { col:0xff00ff, hp:40, dmg:50, spd:0.12 },
+                npc6: { col:0xff4400, hp:70, dmg:20, spd:0.09 }, // Ateş zombi
+                npc7: { col:0x00ffff, hp:65, dmg:18, spd:0.07 }, // Buz zombi
+                npc8: { col:0x000000, hp:300, dmg:40, spd:0.06 }  // Boss zombi
+            };
+            const n = npcs[type];
+            
+            const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(1, 2.5, 1),
+                new THREE.MeshStandardMaterial({ color: n.col })
+            );
+            mesh.position.copy(pos);
+            mesh.castShadow = true;
+            scene.add(mesh);
+            
+            const body = new CANNON.Body({
+                mass: 80,
+                shape: new CANNON.Box(new CANNON.Vec3(0.5, 1.25, 0.5)),
+                position: new CANNON.Vec3(pos.x, pos.y, pos.z),
+                fixedRotation: true
+            });
+            world.addBody(body);
+            
+            const npc = { mesh, body, type, hp: n.hp, maxHp: n.hp, dmg: n.dmg, spd: n.spd, lastAtk: 0 };
+            S.npcs.push(npc);
+            S.objs.push(npc);
+            msg('🧟 NPC spawned! Sana saldıracak!');
+        }
+
+        // SİLAH DEĞİŞ
+        function switchWeapon(num) {
+            const wpns = ['pistol', 'smg', 'rifle', 'shotgun'];
+            if (num >= 1 && num <= 4) {
+                S.wpn = wpns[num - 1];
+                updateHUD();
+                msg('🔫 ' + S.wpns[S.wpn].name);
+            }
+        }
+
+        // ATEŞ ET
+        function shoot() {
+            const w = S.wpns[S.wpn];
+            const now = Date.now();
+            
+            if (now - S.lastShot < w.rate) return;
+            if (w.ammo <= 0) {
+                msg('❌ Mermi yok! R tuşu ile şarjör değiştir');
+                return;
+            }
+            
+            S.lastShot = now;
+            w.ammo--;
+            updateHUD();
+            
+            // Flash efekti
+            const flash = new THREE.PointLight(0xff8800, 2, 10);
+            flash.position.copy(camera.position);
+            scene.add(flash);
+            setTimeout(() => scene.remove(flash), 50);
+            
+            // Raycast
+            S.ray.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const hits = S.ray.intersectObjects(S.npcs.map(n => n.mesh));
+            
+            if (hits.length > 0) {
+                const npc = S.npcs.find(n => n.mesh === hits[0].object);
+                if (npc) {
+                    npc.hp -= w.dmg;
+                    npc.mesh.material.emissive = new THREE.Color(0xff0000);
+                    npc.mesh.material.emissiveIntensity = 0.8;
+                    setTimeout(() => {
+                        if (npc.mesh) {
+                            npc.mesh.material.emissive = new THREE.Color(0x000000);
+                            npc.mesh.material.emissiveIntensity = 0;
+                        }
+                    }, 100);
+                    
+                    if (npc.hp <= 0) {
+                        scene.remove(npc.mesh);
+                        world.removeBody(npc.body);
+                        S.npcs = S.npcs.filter(n => n !== npc);
+                        S.objs = S.objs.filter(o => o !== npc);
+                        msg('💀 Düşman öldürüldü!');
+                    }
+                }
+            }
+        }
+
+        // ŞARJÖR DEĞİŞ
+        function reload() {
+            const w = S.wpns[S.wpn];
+            const need = w.max - w.ammo;
+            const take = Math.min(need, w.res);
+            w.ammo += take;
+            w.res -= take;
+            updateHUD();
+            msg('🔄 Şarjör değiştirildi');
+        }
+
+        // ARABAYA BİN
+        function enterCar() {
+            if (S.driving) {
+                S.driving = false;
+                S.car = null;
+                document.getElementById('drv').style.display = 'none';
+                msg('🚶 Araçtan indin');
+                return;
+            }
+            
+            let nearest = null;
+            let minDist = 10;
+            
+            S.cars.forEach(c => {
+                const dist = camera.position.distanceTo(c.mesh.position);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = c;
+                }
+            });
+            
+            if (nearest) {
+                S.driving = true;
+                S.car = nearest;
+                document.getElementById('drv').style.display = 'block';
+                msg('🚗 Arabaya bindin - WASD ile sür!');
+            } else {
+                msg('❌ Yakında araba yok!');
+            }
+        }
+
+        // ARABA GÜNCELLE
+        function updateCar() {
+            if (!S.driving || !S.car) return;
+            
+            // Kamera takip
+            camera.position.set(
+                S.car.body.position.x,
+                S.car.body.position.y + 8,
+                S.car.body.position.z + 15
+            );
+            camera.lookAt(S.car.body.position.x, S.car.body.position.y, S.car.body.position.z);
+            
+            // SÜRÜŞ - Düzeltildi!
+            const force = new CANNON.Vec3();
+            const torque = new CANNON.Vec3();
+            
+            // İleri/geri kuvvet - arabanın LOCAL Z eksenine göre
+            if (S.keys['w']) force.z = -S.car.spd * 4000; // İLERİ - daha güçlü
+            if (S.keys['s']) force.z = S.car.spd * 3000;  // GERİ - daha güçlü
+            
+            // Dönüş - Y ekseni etrafında
+            if (S.keys['a']) torque.y = S.car.spd * 800;   // SOLA
+            if (S.keys['d']) torque.y = -S.car.spd * 800;  // SAĞA
+            
+            // El freni
+            if (S.keys[' ']) {
+                S.car.body.velocity.scale(0.85, S.car.body.velocity);
+                S.car.body.angularVelocity.scale(0.8, S.car.body.angularVelocity);
+            }
+            
+            // Kuvveti arabanın rotasyonuna göre dünya koordinatlarına çevir
+            const worldForce = S.car.body.quaternion.vmult(force);
+            S.car.body.applyForce(worldForce, S.car.body.position);
+            
+            // Torque'u direkt ekle
+            S.car.body.angularVelocity.x += torque.x;
+            S.car.body.angularVelocity.y += torque.y;
+            S.car.body.angularVelocity.z += torque.z;
+        }
+
+        // NPC GÜNCELLE - ARTIK GERÇEKTEN KOVALIYORLAR!
+        function updateNPCs() {
+            const now = Date.now();
+            S.npcs.forEach(npc => {
+                const toPlayer = new CANNON.Vec3(
+                    camera.position.x - npc.body.position.x,
+                    0,
+                    camera.position.z - npc.body.position.z
+                );
+                const dist = toPlayer.length();
+                
+                // 50 birim içinde kovalamaya başla
+                if (dist < 50) {
+                    toPlayer.normalize();
+                    toPlayer.scale(npc.spd * 60, toPlayer); // Hızı artırdık
+                    npc.body.velocity.x = toPlayer.x;
+                    npc.body.velocity.z = toPlayer.z;
+                    
+                    // 3 birim yakınsa saldır
+                    if (dist < 3 && now - npc.lastAtk > 1000) {
+                        npc.lastAtk = now;
+                        S.hp -= npc.dmg;
+                        updateHUD();
+                        msg('💥 ' + npc.dmg + ' hasar aldın!');
+                        
+                        if (S.hp <= 0) {
+                            msg('💀 ÖLDÜN!');
+                            setTimeout(() => {
+                                S.hp = 100;
+                                updateHUD();
+                                msg('♻️ Yeniden doğdun!');
+                            }, 3000);
+                        }
+                    }
+                } else {
+                    // Uzaksa dur
+                    npc.body.velocity.x = 0;
+                    npc.body.velocity.z = 0;
+                }
+            });
+        }
+
+        // HUD GÜNCELLE
+        function updateHUD() {
+            const w = S.wpns[S.wpn];
+            document.getElementById('hp').textContent = Math.max(0, S.hp);
+            document.getElementById('hpbar').style.width = (S.hp / 100 * 100) + '%';
+            document.getElementById('hpbar').textContent = Math.max(0, S.hp) + ' HP';
+            document.getElementById('wpn').textContent = w.name;
+            document.getElementById('ammo').textContent = w.ammo;
+            document.getElementById('res').textContent = w.res;
+        }
+
+        // MESAJ GÖSTER
+        function msg(text) {
+            const m = document.getElementById('msg');
+            m.textContent = text;
+            m.style.display = 'block';
+            setTimeout(() => m.style.display = 'none', 2000);
+        }
+
+        // TOOL BİLGİ GÜNCELLE
+        function updateInfo() {
+            const names = { 
+                physgun: 'Physics Gun', 
+                weapon: 'Silah Modu', 
+                remover: 'Remover', 
+                rope: 'Rope Tool' 
+            };
+            const helps = {
+                physgun: 'Sol Tık Basılı Tut: Tutup Taşı<br>Sağ Tık: Fırlat • Q: Menu • TAB: Silah',
+                weapon: 'Sol Tık: Ateş • R: Şarjör • 1-4: Silah<br>F: Araba Sür • Q: Menu',
+                remover: 'Sol Tık: Sil',
+                rope: 'Sol Tık: İlk obje seçi, sonra ikinci obje<br>İki objeyi birbirine bağlar'
+            };
+            document.getElementById('info').textContent = names[S.tool];
+            document.getElementById('help').innerHTML = helps[S.tool];
+        }
+
+        // OBJE BUL
+        function getObj() {
+            S.ray.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const meshes = S.objs.map(o => o.mesh);
+            const hits = S.ray.intersectObjects(meshes);
+            if (hits.length > 0) {
+                return S.objs.find(o => o.mesh === hits[0].object);
+            }
+            return null;
+        }
+
+        // PHYSICS GUN - GRAB
+        function grab() {
+            if (S.grab) return;
+            const obj = getObj();
+            if (obj && !S.npcs.includes(obj) && !S.cars.includes(obj)) {
+                S.grab = obj;
+                S.grabDist = camera.position.distanceTo(obj.mesh.position);
+                obj.body.wakeUp();
+                obj.mesh.material.emissive = new THREE.Color(0x00ff00);
+                obj.mesh.material.emissiveIntensity = 0.5;
+                msg('✅ Yakaladın! Hareket edebilirsin!');
+            }
+        }
+
+        // PHYSICS GUN - RELEASE
+        function release() {
+            if (S.grab) {
+                S.grab.body.wakeUp();
+                S.grab.mesh.material.emissive = new THREE.Color(0x000000);
+                S.grab.mesh.material.emissiveIntensity = 0;
+                S.grab = null;
+            }
+        }
+
+        // PHYSICS GUN - THROW
+        function throwObj() {
+            if (S.grab) {
+                const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                S.grab.body.velocity.set(dir.x * 55, dir.y * 55, dir.z * 55);
+                msg('💨 Fırlattın!');
+                release();
+            }
+        }
+
+        // SİL
+        function remove() {
+            const obj = getObj();
+            if (obj) {
+                scene.remove(obj.mesh);
+                world.removeBody(obj.body);
+                S.objs = S.objs.filter(o => o !== obj);
+                S.npcs = S.npcs.filter(n => n !== obj);
+                S.cars = S.cars.filter(c => c !== obj);
+                msg('🗑️ Silindi');
+            }
+        }
+
+        // ROPE TOOL - İki objeyi bağla
+        function ropeClick() {
+            const obj = getObj();
+            if (!obj) return;
+            
+            if (!S.ropeFirst) {
+                // İlk obje seçildi
+                S.ropeFirst = obj;
+                obj.mesh.material.emissive = new THREE.Color(0x00ff00);
+                obj.mesh.material.emissiveIntensity = 0.5;
+                msg('🪢 İlk obje seçildi! Şimdi ikinci objeye tıkla');
+            } else {
+                // İkinci obje seçildi - rope oluştur
+                if (obj === S.ropeFirst) {
+                    msg('❌ Aynı objeye bağlayamazsın!');
+                    return;
+                }
+                
+                // Constraint oluştur - DAHA YUMUŞAK!
+                const constraint = new CANNON.DistanceConstraint(
+                    S.ropeFirst.body, 
+                    obj.body, 
+                    5 // Rope uzunluğu
+                );
+                world.addConstraint(constraint);
+                
+                // Bağlı objelere damping ekle - deli gibi dönmeyi önler
+                S.ropeFirst.body.linearDamping = 0.5;
+                S.ropeFirst.body.angularDamping = 0.7;
+                obj.body.linearDamping = 0.5;
+                obj.body.angularDamping = 0.7;
+                
+                // Görsel rope çizgisi
+                const points = [
+                    new THREE.Vector3().copy(S.ropeFirst.mesh.position),
+                    new THREE.Vector3().copy(obj.mesh.position)
+                ];
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const material = new THREE.LineBasicMaterial({ color: 0xffaa00, linewidth: 3 });
+                const line = new THREE.Line(geometry, material);
+                scene.add(line);
+                
+                S.ropes.push({ 
+                    constraint, 
+                    line, 
+                    obj1: S.ropeFirst, 
+                    obj2: obj 
+                });
+                
+                // Emissive'i sıfırla
+                S.ropeFirst.mesh.material.emissive = new THREE.Color(0x000000);
+                S.ropeFirst.mesh.material.emissiveIntensity = 0;
+                S.ropeFirst = null;
+                
+                msg('🪢 Rope bağlandı!');
+            }
+        }
+        
+        // Rope çizgilerini güncelle
+        function updateRopes() {
+            S.ropes.forEach(rope => {
+                const positions = rope.line.geometry.attributes.position.array;
+                positions[0] = rope.obj1.mesh.position.x;
+                positions[1] = rope.obj1.mesh.position.y;
+                positions[2] = rope.obj1.mesh.position.z;
+                positions[3] = rope.obj2.mesh.position.x;
+                positions[4] = rope.obj2.mesh.position.y;
+                positions[5] = rope.obj2.mesh.position.z;
+                rope.line.geometry.attributes.position.needsUpdate = true;
+            });
+        }
+
+        // EVENTLER
+        document.addEventListener('keydown', e => {
+            S.keys[e.key.toLowerCase()] = true;
+            
+            if (e.key.toLowerCase() === 'q') {
+                S.menu = !S.menu;
+                document.getElementById('menu').classList.toggle('active', S.menu);
+            }
+            
+            if (e.key.toLowerCase() === 'tab') {
+                e.preventDefault();
+                S.tool = S.tool === 'physgun' ? 'weapon' : 'physgun';
+                document.querySelectorAll('.tool').forEach(t => t.classList.remove('active'));
+                document.querySelector(`[data-t="${S.tool}"]`).classList.add('active');
+                updateInfo();
+                msg('🔄 ' + (S.tool === 'weapon' ? 'Silah Modu' : 'Physics Gun'));
+            }
+            
+            if (e.key.toLowerCase() === 'f') enterCar();
+            if (e.key.toLowerCase() === 'r') reload();
+            if (e.key >= '1' && e.key <= '4') switchWeapon(parseInt(e.key));
+            if (e.key === 'Delete') remove();
+        });
+
+        document.addEventListener('keyup', e => {
+            S.keys[e.key.toLowerCase()] = false;
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (S.locked && !S.driving) {
+                yaw -= e.movementX * 0.002;
+                pitch -= e.movementY * 0.002;
+                pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
+            }
+        });
+
+        document.addEventListener('mousedown', e => {
+            if (S.menu || !S.locked) return;
+            
+            if (e.button === 0) {
+                if (S.tool === 'weapon') shoot();
+                else if (S.tool === 'physgun') grab();
+                else if (S.tool === 'remover') remove();
+                else if (S.tool === 'rope') ropeClick();
+            } else if (e.button === 2) {
+                e.preventDefault();
+                if (S.tool === 'physgun') throwObj();
+            }
+        });
+
+        document.addEventListener('mouseup', e => {
+            if (e.button === 0 && S.tool === 'physgun') release();
+        });
+
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        document.body.addEventListener('click', () => {
+            if (!S.menu && !S.locked) document.body.requestPointerLock();
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            S.locked = document.pointerLockElement === document.body;
+        });
+
+        document.querySelectorAll('.item').forEach(item => {
+            item.addEventListener('click', e => {
+                e.stopPropagation();
+                const type = item.dataset.t;
+                const pos = camera.position.clone().add(
+                    new THREE.Vector3(0, 0, -10).applyQuaternion(camera.quaternion)
+                );
+                
+                if (type.startsWith('car')) spawnCar(type, pos);
+                else if (type.startsWith('npc')) spawnNPC(type, pos);
+                else spawn(type, pos);
+                
+                S.menu = false;
+                document.getElementById('menu').classList.remove('active');
+                setTimeout(() => document.body.requestPointerLock(), 100);
+            });
+        });
+
+        document.querySelectorAll('.tool').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tool').forEach(t => t.classList.remove('active'));
+                btn.classList.add('active');
+                S.tool = btn.dataset.t;
+                updateInfo();
+            });
+        });
+
+        // BAŞLANGIÇ
+        spawn('box', new THREE.Vector3(-5, 3, 0));
+        spawn('ball', new THREE.Vector3(0, 3, 0));
+        spawn('barrel', new THREE.Vector3(5, 3, 0));
+        spawnNPC('npc1', new THREE.Vector3(15, 3, 0));
+        spawnCar('car1', new THREE.Vector3(-15, 3, 0));
+
+        // ANA DÖNGÜ
+        const clock = new THREE.Clock();
+        function loop() {
+            requestAnimationFrame(loop);
+            const dt = clock.getDelta();
+            
+            updateCar();
+            updateNPCs();
+            updateRopes();
+            
+            // HAREKET SİSTEMİ - YENİ: Zıplama ve Uçma!
+            if (S.locked && !S.menu && !S.driving) {
+                const speed = 0.45 * (S.keys['shift'] ? 2.2 : 1);
+                const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                fwd.y = 0;
+                right.y = 0;
+                fwd.normalize();
+                right.normalize();
+                
+                // WASD Hareket
+                if (S.keys['w']) camera.position.addScaledVector(fwd, speed);
+                if (S.keys['s']) camera.position.addScaledVector(fwd, -speed);
+                if (S.keys['a']) camera.position.addScaledVector(right, -speed);
+                if (S.keys['d']) camera.position.addScaledVector(right, speed);
+                
+                // UÇMA SİSTEMİ - E yukarı, C aşağı (Q değil!)
+                if (S.keys['e']) {
+                    S.flying = true;
+                    camera.position.y += speed * 1.5;
+                    S.velocity.y = 0;
+                    S.onGround = false;
+                    document.getElementById('fly').style.display = 'block';
+                } else if (S.keys['c'] && S.flying) {
+                    camera.position.y -= speed * 1.5;
+                    if (camera.position.y <= 2) {
+                        camera.position.y = 2;
+                        S.flying = false;
+                        S.onGround = true;
+                        S.velocity.y = 0;
+                        document.getElementById('fly').style.display = 'none';
+                    }
+                } else if (S.flying && !S.keys['e'] && !S.keys['c']) {
+                    // Uçma tuşlarını bırakınca yavaşça in
+                    S.flying = false;
+                }
+                
+                // Uçmayı bırakınca göstergeyi kapat
+                if (!S.keys['e'] && !S.keys['c']) {
+                    document.getElementById('fly').style.display = 'none';
+                }
+                
+                // ZIPLAMA - SPACE (sadece yerdeyken, uçmuyorken)
+                if (S.keys[' '] && S.onGround && !S.flying && !S.jumping) {
+                    S.jumping = true;
+                    S.onGround = false;
+                    S.velocity.y = 0.55;
+                    document.getElementById('jumpind').style.display = 'block';
+                    setTimeout(() => { document.getElementById('jumpind').style.display = 'none'; }, 500);
+                }
+                
+                // Yerçekimi - uçmuyorken aktif
+                if (!S.flying) {
+                    S.velocity.y -= 0.025; // yerçekimi
+                    camera.position.y += S.velocity.y;
+                    
+                    // Yere çarpma
+                    if (camera.position.y <= 2) {
+                        camera.position.y = 2;
+                        S.velocity.y = 0;
+                        S.onGround = true;
+                        S.jumping = false;
+                    }
+                }
+                
+                camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+            }
+            
+            // PHYSICS GUN - TUTUP TAŞIMA
+            if (S.grab && S.locked) {
+                const target = camera.position.clone().add(
+                    new THREE.Vector3(0, 0, -S.grabDist).applyQuaternion(camera.quaternion)
+                );
+                const current = new THREE.Vector3(
+                    S.grab.body.position.x,
+                    S.grab.body.position.y,
+                    S.grab.body.position.z
+                );
+                const diff = target.clone().sub(current);
+                const force = diff.normalize().multiplyScalar(Math.min(diff.length() * 120, 700));
+                S.grab.body.force.set(force.x, force.y, force.z);
+                S.grab.body.velocity.scale(0.88, S.grab.body.velocity);
+                S.grab.body.angularVelocity.scale(0.72, S.grab.body.angularVelocity);
+            }
+            
+            world.step(1/60, dt, 3);
+            
+            S.objs.forEach(o => {
+                o.mesh.position.copy(o.body.position);
+                o.mesh.quaternion.copy(o.body.quaternion);
+            });
+            
+            renderer.render(scene, camera);
+        }
+
+        addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+
+        updateInfo();
+        updateHUD();
+        loop();
+        msg('🎮 SPACE zıpla • E uç • C aşağı in • Q menu!');
+    </script>
+</body>
+</html>

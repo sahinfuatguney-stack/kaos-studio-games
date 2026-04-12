@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hayatta Kal — Survival</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap');
+
+:root {
+  --bg: #0d1a0d;
+  --bg2: #111f11;
+  --bg3: #162416;
+  --panel: #0a150a;
+  --border: #2a4a2a;
+  --green: #4caf50;
+  --green-light: #81c784;
+  --amber: #ffc107;
+  --red: #f44336;
+  --blue: #42a5f5;
+  --text: #c8e6a0;
+  --text-dim: #6a9a50;
+  --text-muted: #3a5a3a;
+  --night: #0a0f1a;
+  --night2: #060c14;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #080f08;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-family: 'Exo 2', sans-serif;
+}
+
+#wrapper {
+  width: 960px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 60px rgba(0,0,0,0.8), 0 0 120px rgba(20,60,20,0.3);
+}
+
+/* ── HEADER ── */
+#header {
+  background: var(--panel);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+#title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 18px;
+  color: var(--green);
+  letter-spacing: 0.1em;
+  min-width: 140px;
+}
+
+.stat-group { display: flex; flex-direction: column; gap: 4px; min-width: 110px; }
+.stat-row { display: flex; align-items: center; gap: 6px; }
+.stat-name { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; width: 52px; }
+.bar-track { flex: 1; height: 7px; background: #0a120a; border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.bar-hp   { background: linear-gradient(90deg, #c62828, #ef5350); }
+.bar-food { background: linear-gradient(90deg, #e65100, #ffa726); }
+.bar-energy { background: linear-gradient(90deg, #1565c0, #42a5f5); }
+.stat-num { font-size: 10px; color: var(--text-dim); width: 26px; text-align: right; font-family: 'Share Tech Mono', monospace; }
+
+#day-panel {
+  margin-left: auto;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+#day-label { font-size: 12px; color: var(--text); font-family: 'Share Tech Mono', monospace; }
+#phase-label { font-size: 10px; color: var(--text-dim); }
+#clock-bar-bg { width: 120px; height: 5px; background: #0a120a; border-radius: 3px; overflow: hidden; }
+#clock-bar-fill { height: 100%; border-radius: 3px; background: #ffd54f; transition: width 0.8s linear; }
+
+/* ── MAIN ── */
+#main { display: flex; height: 520px; }
+
+/* ── CANVAS ── */
+#world-wrap { flex: 1; position: relative; overflow: hidden; }
+canvas#world { display: block; cursor: crosshair; }
+#night-overlay {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, transparent 120px, rgba(5,10,25,0.0) 200px);
+  opacity: 0; transition: opacity 3s ease;
+}
+#msg-box {
+  position: absolute; bottom: 12px; left: 12px; right: 12px;
+  background: rgba(0,0,0,0.75); border: 1px solid var(--border);
+  border-radius: 4px; padding: 6px 10px;
+  font-size: 12px; color: var(--text); font-family: 'Share Tech Mono', monospace;
+  max-height: 64px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 2px;
+  pointer-events: none;
+}
+.msg-line { opacity: 1; transition: opacity 2s; }
+.msg-line.fade { opacity: 0.3; }
+
+/* ── SIDEBAR ── */
+#sidebar {
+  width: 210px;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.side-section { border-bottom: 1px solid var(--border); }
+.side-title {
+  font-size: 10px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 8px 12px 6px;
+  background: rgba(0,0,0,0.2);
+}
+#inventory-list { padding: 6px 8px; max-height: 140px; overflow-y: auto; }
+.inv-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; border-radius: 4px;
+  font-size: 13px; color: var(--text);
+  transition: background 0.15s;
+}
+.inv-row:hover { background: rgba(76,175,80,0.08); }
+.inv-icon { font-size: 15px; }
+.inv-name { flex: 1; font-size: 12px; }
+.inv-amt { font-size: 12px; color: var(--green-light); font-family: 'Share Tech Mono', monospace; font-weight: 600; }
+
+/* CRAFT */
+#craft-list { padding: 6px 8px; max-height: 190px; overflow-y: auto; }
+.craft-row {
+  padding: 6px 8px; border-radius: 4px; margin-bottom: 4px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  cursor: pointer; transition: all 0.15s;
+}
+.craft-row:hover { background: rgba(76,175,80,0.12); border-color: var(--green); }
+.craft-row.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.craft-row.disabled:hover { background: rgba(255,255,255,0.03); border-color: var(--border); }
+.craft-name { font-size: 13px; color: var(--text); margin-bottom: 3px; }
+.craft-req { font-size: 10px; color: var(--text-dim); }
+
+/* ACTIONS */
+#actions { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.act-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(76,175,80,0.08); border: 1px solid var(--border);
+  border-radius: 4px; padding: 7px 10px; cursor: pointer;
+  color: var(--text); font-size: 13px; font-family: 'Exo 2', sans-serif;
+  transition: all 0.15s; width: 100%;
+}
+.act-btn:hover { background: rgba(76,175,80,0.18); border-color: var(--green); }
+.act-btn:active { transform: scale(0.98); }
+.act-icon { font-size: 15px; }
+
+/* BOTTOM BAR */
+#bottom-bar {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex; align-items: center; gap: 12px;
+  font-size: 11px; color: var(--text-dim);
+  font-family: 'Share Tech Mono', monospace;
+}
+#score-display { margin-left: auto; color: var(--green-light); }
+
+/* GAME OVER / WIN overlay */
+#overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 100; gap: 16px;
+}
+#overlay.show { display: flex; }
+#overlay-title { font-size: 48px; font-weight: 700; color: var(--red); font-family: 'Share Tech Mono', monospace; }
+#overlay-title.survived { color: var(--green); }
+#overlay-sub { font-size: 16px; color: var(--text); }
+#restart-btn {
+  margin-top: 8px; padding: 12px 32px;
+  background: var(--green); color: #000; font-size: 15px;
+  border: none; border-radius: 4px; cursor: pointer;
+  font-family: 'Exo 2', sans-serif; font-weight: 600;
+  transition: all 0.15s;
+}
+#restart-btn:hover { background: var(--green-light); transform: scale(1.04); }
+
+/* scrollbars */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="wrapper">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div id="title">⚔ HAYATTA KAL</div>
+
+    <div class="stat-group">
+      <div class="stat-row">
+        <span class="stat-name">Sağlık</span>
+        <div class="bar-track"><div class="bar-fill bar-hp" id="bar-hp" style="width:100%"></div></div>
+        <span class="stat-num" id="num-hp">100</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-name">Açlık</span>
+        <div class="bar-track"><div class="bar-fill bar-food" id="bar-food" style="width:100%"></div></div>
+        <span class="stat-num" id="num-food">100</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-name">Enerji</span>
+        <div class="bar-track"><div class="bar-fill bar-energy" id="bar-energy" style="width:100%"></div></div>
+        <span class="stat-num" id="num-energy">100</span>
+      </div>
+    </div>
+
+    <div id="day-panel">
+      <div id="day-label">GÜN 1</div>
+      <div id="phase-label">🌤 Gündüz</div>
+      <div id="clock-bar-bg"><div id="clock-bar-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="world-wrap">
+      <canvas id="world"></canvas>
+      <div id="night-overlay"></div>
+      <div id="msg-box"></div>
+    </div>
+
+    <div id="sidebar">
+      <!-- Inventory -->
+      <div class="side-section">
+        <div class="side-title">🎒 Envanter</div>
+        <div id="inventory-list"></div>
+      </div>
+
+      <!-- Craft -->
+      <div class="side-section">
+        <div class="side-title">🔨 Craft</div>
+        <div id="craft-list"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="side-section" style="border-bottom:none; flex:1;">
+        <div class="side-title">⚡ Eylemler</div>
+        <div id="actions">
+          <button class="act-btn" onclick="rest()"><span class="act-icon">💤</span> Dinlen (+enerji)</button>
+          <button class="act-btn" onclick="eatFood()"><span class="act-icon">🍖</span> Ye (yemek gerek)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM -->
+  <div id="bottom-bar">
+    <span>WASD / Ok tuşları: hareket</span>
+    <span>|</span>
+    <span>Harita üzerine tıkla: kaynak topla</span>
+    <span>|</span>
+    <span>Gece düşmanlardan sakın!</span>
+    <span id="score-display">SKOR: 0</span>
+  </div>
+</div>
+
+<!-- OVERLAY -->
+<div id="overlay">
+  <div id="overlay-title">ÖLDÜN</div>
+  <div id="overlay-sub" id="overlay-sub">Düşmanlar seni yok etti...</div>
+  <button id="restart-btn" onclick="restartGame()">Tekrar Oyna</button>
+</div>
+
+<script>
+// ── CANVAS SETUP ──
+const canvas = document.getElementById('world');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('world-wrap');
+
+function resize() {
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── GAME STATE ──
+let G = {};
+
+function initState() {
+  G = {
+    day: 1,
+    time: 0,         // 0..1 per day cycle
+    dayLen: 30,       // seconds per full day
+    isNight: false,
+    score: 0,
+    dead: false,
+
+    player: {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      r: 10,
+      hp: 100, maxHp: 100,
+      food: 100, maxFood: 100,
+      energy: 100, maxEnergy: 100,
+      speed: 2.5,
+      invincible: 0,
+    },
+
+    inventory: { wood: 0, stone: 0, food: 0, axe: 0, spear: 0, campfire: 0 },
+
+    resources: [],   // trees, rocks, berries
+    enemies: [],
+    campfires: [],
+    particles: [],
+
+    keys: {},
+    lastTime: null,
+  };
+  spawnResources();
+}
+
+function spawnResources() {
+  G.resources = [];
+  const W = canvas.width, H = canvas.height;
+  for (let i = 0; i < 14; i++) safeSpawn('tree');
+  for (let i = 0; i < 10; i++) safeSpawn('rock');
+  for (let i = 0; i < 8;  i++) safeSpawn('berry');
+}
+
+function safeSpawn(type) {
+  const W = canvas.width, H = canvas.height;
+  for (let t = 0; t < 30; t++) {
+    const x = 40 + Math.random() * (W - 80);
+    const y = 40 + Math.random() * (H - 80);
+    const dist = Math.hypot(x - G.player.x, y - G.player.y);
+    if (dist > 80) {
+      G.resources.push({ type, x, y, hp: type === 'tree' ? 3 : type === 'rock' ? 4 : 1, maxHp: type === 'tree' ? 3 : type === 'rock' ? 4 : 1, r: type === 'tree' ? 16 : type === 'rock' ? 12 : 8 });
+      return;
+    }
+  }
+}
+
+// ── RECIPES ──
+const RECIPES = [
+  { name: 'Balta', icon: '🪓', id: 'axe',      cost: { wood: 3, stone: 2 } },
+  { name: 'Mızrak', icon: '🔱', id: 'spear',   cost: { wood: 4, stone: 3 } },
+  { name: 'Kamp Ateşi', icon: '🔥', id: 'campfire', cost: { wood: 5, stone: 2 } },
+  { name: 'Yemek (et)', icon: '🍖', id: 'food', cost: { wood: 2 }, note: '+3 yemek' },
+];
+
+// ── INPUT ──
+document.addEventListener('keydown', e => {
+  G.keys[e.code] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+});
+document.addEventListener('keyup', e => { G.keys[e.code] = false; });
+
+canvas.addEventListener('click', e => {
+  if (G.dead) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  tryGather(mx, my);
+});
+
+function tryGather(mx, my) {
+  const p = G.player;
+  for (let i = G.resources.length - 1; i >= 0; i--) {
+    const r = G.resources[i];
+    const d = Math.hypot(mx - r.x, my - r.y);
+    if (d < r.r + 20) {
+      const dist = Math.hypot(r.x - p.x, r.y - p.y);
+      if (dist > 140) { addMsg('Çok uzaksın!'); return; }
+      if (G.inventory.axe > 0 && r.type === 'tree') r.hp -= 2;
+      else r.hp -= 1;
+      if (G.player.energy < 5) { addMsg('Enerji yetersiz!'); return; }
+      G.player.energy = Math.max(0, G.player.energy - 5);
+      spawnParticles(r.x, r.y, r.type === 'tree' ? '#4caf50' : r.type === 'rock' ? '#9e9e9e' : '#ef5350');
+      if (r.hp <= 0) {
+        if (r.type === 'tree')  { G.inventory.wood += G.inventory.axe ? 3 : 2; addMsg('🌲 Odun toplandı!'); }
+        if (r.type === 'rock')  { G.inventory.stone += 2; addMsg('🪨 Taş toplandı!'); }
+        if (r.type === 'berry') { G.inventory.food += 2; addMsg('🫐 Yiyecek toplandı!'); }
+        G.resources.splice(i, 1);
+        setTimeout(() => safeSpawn(r.type), 8000 + Math.random() * 6000);
+      } else {
+        addMsg(r.type === 'tree' ? '🌲 Ağaca vurdun!' : r.type === 'rock' ? '🪨 Taşa vurdun!' : '🫐 Meyve toplandı!');
+      }
+      updateUI();
+      return;
+    }
+  }
+}
+
+// ── CRAFT ──
+function craft(id) {
+  if (G.dead) return;
+  const recipe = RECIPES.find(r => r.id === id);
+  if (!recipe) return;
+  for (const [res, amt] of Object.entries(recipe.cost)) {
+    if ((G.inventory[res] || 0) < amt) { addMsg('❌ Yetersiz materyal!'); return; }
+  }
+  for (const [res, amt] of Object.entries(recipe.cost)) G.inventory[res] -= amt;
+  if (id === 'food') { G.inventory.food = (G.inventory.food || 0) + 3; }
+  else { G.inventory[id] = (G.inventory[id] || 0) + 1; }
+  addMsg(`✅ ${recipe.icon} ${recipe.name} yapıldı!`);
+  updateUI();
+}
+
+// ── REST / EAT ──
+function rest() {
+  if (G.dead) return;
+  if (G.isNight) { addMsg('⚠️ Gece dinlenemezsin!'); return; }
+  G.player.energy = Math.min(G.player.maxEnergy, G.player.energy + 30);
+  addMsg('💤 Dinlendin. Enerji arttı.');
+  updateUI();
+}
+
+function eatFood() {
+  if (G.dead) return;
+  if (G.inventory.food <= 0) { addMsg('🍖 Yiyeceğin yok!'); return; }
+  G.inventory.food--;
+  G.player.food = Math.min(G.player.maxFood, G.player.food + 25);
+  G.player.hp   = Math.min(G.player.maxHp,  G.player.hp   + 5);
+  addMsg('🍖 Yedin. Açlık azaldı.');
+  updateUI();
+}
+
+// ── ENEMIES ──
+function spawnEnemy() {
+  const W = canvas.width, H = canvas.height;
+  const side = Math.floor(Math.random() * 4);
+  let x, y;
+  if (side === 0) { x = Math.random() * W; y = -15; }
+  else if (side === 1) { x = W + 15; y = Math.random() * H; }
+  else if (side === 2) { x = Math.random() * W; y = H + 15; }
+  else { x = -15; y = Math.random() * H; }
+  const hasSpear = G.inventory.spear > 0;
+  G.enemies.push({ x, y, r: 10, speed: 0.9 + Math.random() * 0.5, hp: hasSpear ? 3 : 2, maxHp: hasSpear ? 3 : 2, color: '#e53935' });
+}
+
+// ── PARTICLES ──
+function spawnParticles(x, y, color) {
+  for (let i = 0; i < 6; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 2;
+    G.particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, color });
+  }
+}
+
+// ── CAMPFIRE ──
+function placeCampfire() {
+  if (G.inventory.campfire <= 0) { addMsg('Kamp ateşin yok!'); return; }
+  G.inventory.campfire--;
+  G.campfires.push({ x: G.player.x, y: G.player.y, r: 40, life: 60 });
+  addMsg('🔥 Kamp ateşi kuruldu! Düşmanlar yaklaşamaz.');
+  updateUI();
+}
+
+// ── MESSAGES ──
+const msgBox = document.getElementById('msg-box');
+let messages = [];
+function addMsg(txt) {
+  messages.push(txt);
+  if (messages.length > 4) messages.shift();
+  msgBox.innerHTML = messages.map((m, i) => `<div class="msg-line${i < messages.length - 1 ? ' fade' : ''}">${m}</div>`).join('');
+}
+
+// ── UI UPDATE ──
+function updateUI() {
+  const p = G.player;
+  setBar('hp', p.hp, p.maxHp);
+  setBar('food', p.food, p.maxFood);
+  setBar('energy', p.energy, p.maxEnergy);
+
+  // Inventory
+  const inv = document.getElementById('inventory-list');
+  const icons = { wood: '🌲', stone: '🪨', food: '🍖', axe: '🪓', spear: '🔱', campfire: '🔥' };
+  const names = { wood: 'Odun', stone: 'Taş', food: 'Yiyecek', axe: 'Balta', spear: 'Mızrak', campfire: 'Kamp Ateşi' };
+  inv.innerHTML = Object.entries(G.inventory).map(([k, v]) => v > 0 ?
+    `<div class="inv-row"><span class="inv-icon">${icons[k]}</span><span class="inv-name">${names[k]}</span><span class="inv-amt">x${v}</span></div>` : ''
+  ).join('');
+
+  // Craft
+  const cl = document.getElementById('craft-list');
+  cl.innerHTML = RECIPES.map(r => {
+    const canCraft = Object.entries(r.cost).every(([res, amt]) => (G.inventory[res] || 0) >= amt);
+    const costStr = Object.entries(r.cost).map(([res, amt]) => `${icons[res]}x${amt}`).join(' ');
+    return `<div class="craft-row${canCraft ? '' : ' disabled'}" data-craft="${r.id}">
+      <div class="craft-name">${r.icon} ${r.name}</div>
+      <div class="craft-req">Gerek: ${costStr}${r.note ? ' → ' + r.note : ''}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('score-display').textContent = 'SKOR: ' + G.score;
+}
+
+function setBar(id, val, max) {
+  const pct = Math.max(0, Math.min(100, (val / max) * 100));
+  document.getElementById('bar-' + id).style.width = pct + '%';
+  document.getElementById('num-' + id).textContent = Math.round(val);
+}
+
+// ── DRAW ──
+function drawWorld() {
+  const W = canvas.width, H = canvas.height;
+  const night = G.isNight;
+
+  // background
+  ctx.fillStyle = night ? '#0a0f12' : '#1a3a1a';
+  ctx.fillRect(0, 0, W, H);
+
+  // grid
+  ctx.strokeStyle = night ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+  // campfires
+  for (const cf of G.campfires) {
+    const grad = ctx.createRadialGradient(cf.x, cf.y, 0, cf.x, cf.y, cf.r);
+    grad.addColorStop(0, 'rgba(255,180,0,0.3)');
+    grad.addColorStop(1, 'rgba(255,100,0,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(cf.x, cf.y, cf.r, 0, Math.PI * 2); ctx.fill();
+    ctx.font = '18px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🔥', cf.x, cf.y);
+  }
+
+  // resources
+  for (const r of G.resources) {
+    if (r.type === 'tree') {
+      ctx.fillStyle = '#2e7d32';
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#5d4037';
+      ctx.fillRect(r.x - 2, r.y + r.r - 4, 4, 8);
+      ctx.fillStyle = '#66bb6a';
+      ctx.beginPath(); ctx.arc(r.x, r.y - 2, r.r - 4, 0, Math.PI * 2); ctx.fill();
+    } else if (r.type === 'rock') {
+      ctx.fillStyle = '#757575';
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#9e9e9e';
+      ctx.beginPath(); ctx.arc(r.x - 3, r.y - 3, r.r * 0.5, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = '#ad1457';
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f06292';
+      ctx.beginPath(); ctx.arc(r.x - 2, r.y - 2, r.r * 0.5, 0, Math.PI * 2); ctx.fill();
+    }
+    // HP bar
+    if (r.hp < r.maxHp) {
+      ctx.fillStyle = '#333'; ctx.fillRect(r.x - 12, r.y - r.r - 8, 24, 4);
+      ctx.fillStyle = '#4caf50'; ctx.fillRect(r.x - 12, r.y - r.r - 8, 24 * (r.hp / r.maxHp), 4);
+    }
+  }
+
+  // enemies
+  for (const e of G.enemies) {
+    ctx.fillStyle = '#b71c1c';
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ef5350';
+    ctx.beginPath(); ctx.arc(e.x - 3, e.y - 3, e.r * 0.5, 0, Math.PI * 2); ctx.fill();
+    // eyes
+    ctx.fillStyle = '#ffff00';
+    ctx.beginPath(); ctx.arc(e.x - 3, e.y - 2, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x + 3, e.y - 2, 2, 0, Math.PI * 2); ctx.fill();
+    // hp
+    ctx.fillStyle = '#333'; ctx.fillRect(e.x - 10, e.y - e.r - 7, 20, 4);
+    ctx.fillStyle = '#f44336'; ctx.fillRect(e.x - 10, e.y - e.r - 7, 20 * (e.hp / e.maxHp), 4);
+  }
+
+  // particles
+  for (const pt of G.particles) {
+    ctx.globalAlpha = pt.life;
+    ctx.fillStyle = pt.color;
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // player
+  const p = G.player;
+  if (p.invincible > 0 && Math.floor(p.invincible * 10) % 2 === 0) {
+    // flicker when invincible
+  } else {
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.ellipse(p.x, p.y + p.r - 2, p.r * 0.8, p.r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    // body
+    ctx.fillStyle = '#1565c0';
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#42a5f5';
+    ctx.beginPath(); ctx.arc(p.x - 3, p.y - 3, p.r * 0.55, 0, Math.PI * 2); ctx.fill();
+    // face dot
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(p.x + 2, p.y - 2, 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // night vignette
+  if (night) {
+    const vigGrad = ctx.createRadialGradient(p.x, p.y, 60, p.x, p.y, Math.max(W, H));
+    vigGrad.addColorStop(0, 'rgba(5,10,25,0)');
+    vigGrad.addColorStop(1, 'rgba(5,10,25,0.85)');
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// ── GAME LOOP ──
+let enemySpawnTimer = 0;
+let statDecayTimer = 0;
+let resourceRespawnQ = [];
+
+function update(dt) {
+  if (G.dead) return;
+  const p = G.player;
+  G.score += Math.floor(dt * 10);
+
+  // ── TIME ──
+  G.time += dt / G.dayLen;
+  if (G.time >= 1) {
+    G.time = 0;
+    G.day++;
+    document.getElementById('day-label').textContent = 'GÜN ' + G.day;
+    addMsg('🌅 Yeni gün başladı! Hayatta kaldın.');
+  }
+
+  const wasNight = G.isNight;
+  G.isNight = G.time >= 0.5;
+
+  if (!wasNight && G.isNight) {
+    addMsg('🌙 Gece oldu! Düşmanlar geliyor...');
+    document.getElementById('phase-label').textContent = '🌙 Gece';
+    document.getElementById('clock-bar-fill').style.background = '#5c6bc0';
+  } else if (wasNight && !G.isNight) {
+    addMsg('☀️ Sabah oldu!');
+    document.getElementById('phase-label').textContent = '🌤 Gündüz';
+    document.getElementById('clock-bar-fill').style.background = '#ffd54f';
+    G.enemies = [];
+  }
+
+  const clockPct = G.isNight ? ((G.time - 0.5) / 0.5) * 100 : (G.time / 0.5) * 100;
+  document.getElementById('clock-bar-fill').style.width = clockPct + '%';
+
+  // ── PLAYER MOVEMENT ──
+  let dx = 0, dy = 0;
+  if (G.keys['ArrowUp']    || G.keys['KeyW']) dy -= 1;
+  if (G.keys['ArrowDown']  || G.keys['KeyS']) dy += 1;
+  if (G.keys['ArrowLeft']  || G.keys['KeyA']) dx -= 1;
+  if (G.keys['ArrowRight'] || G.keys['KeyD']) dx += 1;
+
+  if (dx !== 0 || dy !== 0) {
+    const len = Math.hypot(dx, dy);
+    dx /= len; dy /= len;
+    const spd = p.speed * (p.energy < 20 ? 0.5 : 1);
+    p.x = Math.max(p.r, Math.min(canvas.width  - p.r, p.x + dx * spd));
+    p.y = Math.max(p.r, Math.min(canvas.height - p.r, p.y + dy * spd));
+    p.energy = Math.max(0, p.energy - dt * 3);
+  }
+
+  // ── STAT DECAY ──
+  statDecayTimer += dt;
+  if (statDecayTimer > 2) {
+    statDecayTimer = 0;
+    p.food   = Math.max(0, p.food   - 1.5);
+    p.energy = Math.min(p.maxEnergy, p.energy + (G.isNight ? 0 : 0.5));
+    if (p.food === 0) {
+      p.hp = Math.max(0, p.hp - 3);
+      addMsg('⚠️ Aç kalıyorsun! Can azalıyor.');
+    }
+  }
+
+  // ── CAMPFIRE DECAY ──
+  for (let i = G.campfires.length - 1; i >= 0; i--) {
+    G.campfires[i].life -= dt;
+    if (G.campfires[i].life <= 0) G.campfires.splice(i, 1);
+  }
+
+  // ── ENEMIES ──
+  if (G.isNight) {
+    enemySpawnTimer -= dt;
+    if (enemySpawnTimer <= 0) {
+      const maxEnemies = 3 + G.day;
+      if (G.enemies.length < maxEnemies) spawnEnemy();
+      enemySpawnTimer = 4 - Math.min(3, G.day * 0.3);
+    }
+
+    for (let i = G.enemies.length - 1; i >= 0; i--) {
+      const e = G.enemies[i];
+
+      // flee campfire
+      let fleeing = false;
+      for (const cf of G.campfires) {
+        if (Math.hypot(e.x - cf.x, e.y - cf.y) < cf.r + e.r) {
+          fleeing = true;
+          const ang = Math.atan2(e.y - cf.y, e.x - cf.x);
+          e.x += Math.cos(ang) * e.speed * 2;
+          e.y += Math.sin(ang) * e.speed * 2;
+        }
+      }
+
+      if (!fleeing) {
+        const ang = Math.atan2(p.y - e.y, p.x - e.x);
+        e.x += Math.cos(ang) * e.speed;
+        e.y += Math.sin(ang) * e.speed;
+      }
+
+      // collision with player
+      if (p.invincible <= 0 && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) {
+        const dmg = G.inventory.spear > 0 ? 5 : 12;
+        p.hp = Math.max(0, p.hp - dmg);
+        p.invincible = 1.2;
+        spawnParticles(p.x, p.y, '#f44336');
+        addMsg(G.inventory.spear > 0 ? '⚔️ Düşman saldırdı! (-5 can)' : '💀 Düşman saldırdı! (-12 can)');
+        // knockback
+        const kang = Math.atan2(p.y - e.y, p.x - e.x);
+        p.x = Math.max(p.r, Math.min(canvas.width  - p.r, p.x + Math.cos(kang) * 20));
+        p.y = Math.max(p.r, Math.min(canvas.height - p.r, p.y + Math.sin(kang) * 20));
+        // damage enemy if has spear
+        if (G.inventory.spear > 0) {
+          e.hp--;
+          if (e.hp <= 0) { G.enemies.splice(i, 1); G.score += 50; addMsg('💥 Düşman öldürüldü! (+50 puan)'); continue; }
+        }
+      }
+    }
+  } else {
+    enemySpawnTimer = 3;
+  }
+
+  if (p.invincible > 0) p.invincible -= dt;
+
+  // ── PARTICLES ──
+  for (let i = G.particles.length - 1; i >= 0; i--) {
+    const pt = G.particles[i];
+    pt.x += pt.vx; pt.y += pt.vy;
+    pt.life -= dt * 1.5;
+    if (pt.life <= 0) G.particles.splice(i, 1);
+  }
+
+  // ── DEATH CHECK ──
+  if (p.hp <= 0) {
+    G.dead = true;
+    const overlay = document.getElementById('overlay');
+    overlay.classList.add('show');
+    document.getElementById('overlay-title').textContent = 'ÖLDÜN';
+    document.getElementById('overlay-title').classList.remove('survived');
+    document.getElementById('overlay-sub').textContent = `Gün ${G.day} - Skor: ${G.score}`;
+    return;
+  }
+
+  updateUI();
+}
+
+// ── RESTART ──
+function restartGame() {
+  document.getElementById('overlay').classList.remove('show');
+  initState();
+  updateUI();
+  addMsg('⚡ Oyun başladı! Hayatta kalmaya çalış.');
+}
+
+// ── MAIN LOOP ──
+function loop(ts) {
+  if (!G.lastTime) G.lastTime = ts;
+  const dt = Math.min((ts - G.lastTime) / 1000, 0.1);
+  G.lastTime = ts;
+
+  if (!G.dead) update(dt);
+  drawWorld();
+  requestAnimationFrame(loop);
+}
+
+// ── CRAFT CLICK (event delegation) ──
+document.getElementById('craft-list').addEventListener('click', e => {
+  const row = e.target.closest('[data-craft]');
+  if (!row || row.classList.contains('disabled')) return;
+  craft(row.dataset.craft);
+});
+
+// ── START ──
+initState();
+updateUI();
+addMsg('⚡ Oyun başladı! Haritaya tıkla veya WASD ile hareket et.');
+addMsg('🌳 Kaynak topla, craft yap, geceyi atlatmaya çalış!');
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

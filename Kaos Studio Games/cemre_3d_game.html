@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cemre'nin Doğum Günü Macerası 🎂</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #87CEEB;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+        }
+
+        #instructions {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 18px;
+            z-index: 10;
+        }
+
+        #instructions.hidden {
+            display: none;
+        }
+
+        .key {
+            display: inline-block;
+            background: #fff;
+            color: #000;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin: 0 5px;
+            font-weight: bold;
+        }
+
+        #message {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 215, 0, 0.9);
+            color: #000;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            display: none;
+            z-index: 10;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.05); }
+        }
+
+        #birthdayScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        #birthdayScreen h1 {
+            font-size: 5em;
+            color: #FFD700;
+            text-shadow: 0 0 20px #FF69B4, 0 0 40px #FF1493;
+            animation: glow 2s infinite alternate;
+            margin-bottom: 30px;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 20px #FF69B4, 0 0 40px #FF1493; }
+            to { text-shadow: 0 0 40px #FF69B4, 0 0 80px #FF1493, 0 0 120px #FF1493; }
+        }
+
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            animation: confetti-fall 4s linear infinite;
+        }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="instructions">
+        <div>🚗 <strong>ARABA SÜRME MODU</strong></div>
+        <div style="margin-top: 10px;">
+            <span class="key">W</span> İleri
+            <span class="key">A</span> Sol
+            <span class="key">S</span> Geri
+            <span class="key">D</span> Sağ
+        </div>
+        <div style="margin-top: 15px; font-size: 14px;">Eve git ve pastayı bul! 🎂</div>
+    </div>
+
+    <div id="message"></div>
+
+    <div id="birthdayScreen">
+        <h1>İYİ Kİ DOĞDUN CEMRE! 🎉</h1>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        let scene, camera, renderer;
+        let car, brother;
+        let keys = {};
+        let gameMode = 'driving'; // 'driving' veya 'walking'
+        let player;
+        let house, table, cake;
+        let family = [];
+        let cakeReached = false;
+
+        const instructionsDiv = document.getElementById('instructions');
+        const messageDiv = document.getElementById('message');
+        const birthdayScreen = document.getElementById('birthdayScreen');
+
+        function init() {
+            // Sahne oluştur
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
+
+            // Kamera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Işıklar
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            sunLight.position.set(50, 50, 50);
+            sunLight.castShadow = true;
+            sunLight.shadow.camera.left = -50;
+            sunLight.shadow.camera.right = 50;
+            sunLight.shadow.camera.top = 50;
+            sunLight.shadow.camera.bottom = -50;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            scene.add(sunLight);
+
+            // Zemin
+            const groundGeometry = new THREE.PlaneGeometry(200, 200);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Yol
+            const roadGeometry = new THREE.PlaneGeometry(10, 100);
+            const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            const road = new THREE.Mesh(roadGeometry, roadMaterial);
+            road.rotation.x = -Math.PI / 2;
+            road.position.y = 0.01;
+            road.receiveShadow = true;
+            scene.add(road);
+
+            // Yol çizgileri
+            for (let i = -40; i < 40; i += 10) {
+                const lineGeometry = new THREE.PlaneGeometry(0.3, 4);
+                const lineMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+                const line = new THREE.Mesh(lineGeometry, lineMaterial);
+                line.rotation.x = -Math.PI / 2;
+                line.position.set(0, 0.02, i);
+                scene.add(line);
+            }
+
+            // Araba oluştur
+            createCar();
+
+            // Ev oluştur
+            createHouse();
+
+            // Ağaçlar ekle
+            for (let i = 0; i < 20; i++) {
+                const x = (Math.random() - 0.5) * 180;
+                const z = (Math.random() - 0.5) * 180;
+                if (Math.abs(x) > 15 || Math.abs(z - 30) > 10) {
+                    createTree(x, z);
+                }
+            }
+
+            // Klavye kontrolleri
+            document.addEventListener('keydown', (e) => {
+                keys[e.key.toLowerCase()] = true;
+            });
+
+            document.addEventListener('keyup', (e) => {
+                keys[e.key.toLowerCase()] = false;
+            });
+
+            window.addEventListener('resize', onWindowResize);
+
+            animate();
+        }
+
+        function createCar() {
+            car = new THREE.Group();
+
+            // Araba gövdesi
+            const bodyGeometry = new THREE.BoxGeometry(2, 1, 4);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xFF4444 });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 1;
+            body.castShadow = true;
+            car.add(body);
+
+            // Araba kabini
+            const cabinGeometry = new THREE.BoxGeometry(1.8, 0.8, 2);
+            const cabinMaterial = new THREE.MeshLambertMaterial({ color: 0xFF6666 });
+            const cabin = new THREE.Mesh(cabinGeometry, cabinMaterial);
+            cabin.position.set(0, 1.9, -0.3);
+            cabin.castShadow = true;
+            car.add(cabin);
+
+            // Tekerlekler
+            const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 16);
+            const wheelMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
+            
+            const wheelPositions = [
+                [-1, 0.4, 1.2],
+                [1, 0.4, 1.2],
+                [-1, 0.4, -1.2],
+                [1, 0.4, -1.2]
+            ];
+
+            wheelPositions.forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.position.set(pos[0], pos[1], pos[2]);
+                wheel.castShadow = true;
+                car.add(wheel);
+            });
+
+            car.position.set(0, 0, -20);
+            scene.add(car);
+
+            // Abi (yolcu)
+            brother = new THREE.Group();
+            
+            const headGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xFFDBAC });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 2.5;
+            brother.add(head);
+
+            const bodyGeo = new THREE.CylinderGeometry(0.2, 0.3, 0.8, 16);
+            const bodyMat = new THREE.MeshLambertMaterial({ color: 0x4444FF });
+            const brotherBody = new THREE.Mesh(bodyGeo, bodyMat);
+            brotherBody.position.y = 1.8;
+            brother.add(brotherBody);
+
+            brother.position.set(0.6, 0, -0.5);
+            car.add(brother);
+
+            // "FUAT" yazısı
+            createTextLabel('FUAT', 0.6, 3, -0.5, car);
+        }
+
+        function createHouse() {
+            house = new THREE.Group();
+
+            // Ev duvarları
+            const wallGeometry = new THREE.BoxGeometry(10, 5, 10);
+            const wallMaterial = new THREE.MeshLambertMaterial({ color: 0xDEB887 });
+            const walls = new THREE.Mesh(wallGeometry, wallMaterial);
+            walls.position.y = 2.5;
+            walls.castShadow = true;
+            walls.receiveShadow = true;
+            house.add(walls);
+
+            // Çatı
+            const roofGeometry = new THREE.ConeGeometry(7, 3, 4);
+            const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.y = 6.5;
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            house.add(roof);
+
+            // Kapı
+            const doorGeometry = new THREE.BoxGeometry(2, 3, 0.2);
+            const doorMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+            const door = new THREE.Mesh(doorGeometry, doorMaterial);
+            door.position.set(0, 1.5, 5.1);
+            house.add(door);
+
+            // Pencereler
+            const windowGeometry = new THREE.BoxGeometry(1.5, 1.5, 0.1);
+            const windowMaterial = new THREE.MeshLambertMaterial({ color: 0x87CEEB });
+            
+            const window1 = new THREE.Mesh(windowGeometry, windowMaterial);
+            window1.position.set(-3, 3, 5.1);
+            house.add(window1);
+
+            const window2 = new THREE.Mesh(windowGeometry, windowMaterial);
+            window2.position.set(3, 3, 5.1);
+            house.add(window2);
+
+            house.position.set(0, 0, 40);
+            scene.add(house);
+
+            // Ev içini oluştur
+            createInterior();
+        }
+
+        function createInterior() {
+            // Masa
+            table = new THREE.Group();
+            
+            const tableTopGeometry = new THREE.BoxGeometry(4, 0.2, 3);
+            const tableTopMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            const tableTop = new THREE.Mesh(tableTopGeometry, tableTopMaterial);
+            tableTop.position.y = 1.5;
+            table.add(tableTop);
+
+            // Masa ayakları
+            const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1.5, 8);
+            const legMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+            
+            const legPositions = [
+                [-1.5, 0.75, -1],
+                [1.5, 0.75, -1],
+                [-1.5, 0.75, 1],
+                [1.5, 0.75, 1]
+            ];
+
+            legPositions.forEach(pos => {
+                const leg = new THREE.Mesh(legGeometry, legMaterial);
+                leg.position.set(pos[0], pos[1], pos[2]);
+                table.add(leg);
+            });
+
+            table.position.set(0, 0, 36);
+            scene.add(table);
+
+            // Pasta
+            cake = new THREE.Group();
+            
+            const cakeBaseGeometry = new THREE.CylinderGeometry(0.8, 0.8, 0.6, 32);
+            const cakeBaseMaterial = new THREE.MeshLambertMaterial({ color: 0xFFB6C1 });
+            const cakeBase = new THREE.Mesh(cakeBaseGeometry, cakeBaseMaterial);
+            cakeBase.position.y = 1.9;
+            cake.add(cakeBase);
+
+            const cakeTopGeometry = new THREE.CylinderGeometry(0.6, 0.6, 0.4, 32);
+            const cakeTopMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
+            const cakeTop = new THREE.Mesh(cakeTopGeometry, cakeTopMaterial);
+            cakeTop.position.y = 2.4;
+            cake.add(cakeTop);
+
+            // Mumlar
+            for (let i = 0; i < 5; i++) {
+                const candleGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8);
+                const candleMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
+                const candle = new THREE.Mesh(candleGeometry, candleMaterial);
+                const angle = (i / 5) * Math.PI * 2;
+                candle.position.set(Math.cos(angle) * 0.3, 2.9, Math.sin(angle) * 0.3);
+                cake.add(candle);
+
+                // Alev
+                const flameGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+                const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xFFA500 });
+                const flame = new THREE.Mesh(flameGeometry, flameMaterial);
+                flame.position.set(Math.cos(angle) * 0.3, 3.2, Math.sin(angle) * 0.3);
+                cake.add(flame);
+            }
+
+            cake.position.set(0, 0, 36);
+            scene.add(cake);
+
+            // Aile üyeleri
+            createFamilyMember('Anne', -2, 1, 34, 0x9370DB);
+            createFamilyMember('Baba', 2, 1, 34, 0x4169E1);
+            createFamilyMember('Mert', -3, 1, 37, 0x32CD32);
+            createFamilyMember('Canan', 3, 1, 37, 0xFF69B4);
+        }
+
+        function createFamilyMember(name, x, y, z, color) {
+            const person = new THREE.Group();
+
+            // Kafa
+            const headGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xFFDBAC });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.8;
+            person.add(head);
+
+            // Vücut
+            const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.2, 16);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: color });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.8;
+            person.add(body);
+
+            // Kollar
+            const armGeometry = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 8);
+            const armMaterial = new THREE.MeshLambertMaterial({ color: color });
+            
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.position.set(-0.5, 1, 0);
+            leftArm.rotation.z = Math.PI / 4;
+            person.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.position.set(0.5, 1, 0);
+            rightArm.rotation.z = -Math.PI / 4;
+            person.add(rightArm);
+
+            person.position.set(x, y, z);
+            scene.add(person);
+            family.push(person);
+
+            // İsim etiketi
+            createTextLabel(name, x, y + 2.5, z);
+        }
+
+        function createTextLabel(text, x, y, z, parent = null) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            
+            context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            context.font = 'bold 40px Arial';
+            context.fillStyle = 'white';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(2, 0.5, 1);
+            
+            if (parent) {
+                sprite.position.set(x, y, z);
+                parent.add(sprite);
+            } else {
+                sprite.position.set(x, y, z);
+                scene.add(sprite);
+            }
+        }
+
+        function createTree(x, z) {
+            const tree = new THREE.Group();
+
+            // Gövde
+            const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 3, 8);
+            const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 1.5;
+            trunk.castShadow = true;
+            tree.add(trunk);
+
+            // Yapraklar
+            const leavesGeometry = new THREE.SphereGeometry(1.5, 8, 8);
+            const leavesMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+            leaves.position.y = 3.5;
+            leaves.castShadow = true;
+            tree.add(leaves);
+
+            tree.position.set(x, 0, z);
+            scene.add(tree);
+        }
+
+        function updateCar() {
+            const speed = 0.2;
+            const rotationSpeed = 0.03;
+
+            if (keys['w']) {
+                car.position.z += Math.cos(car.rotation.y) * speed;
+                car.position.x += Math.sin(car.rotation.y) * speed;
+            }
+            if (keys['s']) {
+                car.position.z -= Math.cos(car.rotation.y) * speed;
+                car.position.x -= Math.sin(car.rotation.y) * speed;
+            }
+            if (keys['a']) {
+                car.rotation.y += rotationSpeed;
+            }
+            if (keys['d']) {
+                car.rotation.y -= rotationSpeed;
+            }
+
+            // Kamerayı arabanın arkasına yerleştir
+            const cameraOffset = new THREE.Vector3(0, 5, -10);
+            cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), car.rotation.y);
+            camera.position.x = car.position.x + cameraOffset.x;
+            camera.position.y = car.position.y + cameraOffset.y;
+            camera.position.z = car.position.z + cameraOffset.z;
+            camera.lookAt(car.position);
+
+            // Eve yaklaştık mı kontrol et
+            const distanceToHouse = Math.sqrt(
+                Math.pow(car.position.x - house.position.x, 2) + 
+                Math.pow(car.position.z - house.position.z, 2)
+            );
+
+            if (distanceToHouse < 12 && gameMode === 'driving') {
+                messageDiv.textContent = 'E tuşuna bas ve eve gir! 🏠';
+                messageDiv.style.display = 'block';
+
+                if (keys['e']) {
+                    switchToWalkingMode();
+                }
+            } else if (gameMode === 'driving') {
+                messageDiv.style.display = 'none';
+            }
+        }
+
+        function switchToWalkingMode() {
+            gameMode = 'walking';
+            car.visible = false;
+            messageDiv.style.display = 'none';
+
+            // Oyuncu karakteri oluştur (birinci şahıs)
+            player = new THREE.Object3D();
+            player.position.set(0, 1.6, 32);
+            scene.add(player);
+
+            camera.position.set(0, 0, 0);
+            camera.rotation.set(0, 0, 0);
+            player.add(camera);
+
+            instructionsDiv.innerHTML = `
+                <div>🚶 <strong>YÜRÜME MODU</strong></div>
+                <div style="margin-top: 10px;">
+                    <span class="key">W</span> İleri
+                    <span class="key">A</span> Sol
+                    <span class="key">S</span> Geri
+                    <span class="key">D</span> Sağ
+                </div>
+                <div style="margin-top: 15px; font-size: 14px;">Pastaya yaklaş! 🎂</div>
+            `;
+        }
+
+        function updatePlayer() {
+            if (!player) return;
+
+            const speed = 0.15;
+
+            const forward = new THREE.Vector3(0, 0, 1);
+            const right = new THREE.Vector3(1, 0, 0);
+
+            forward.applyQuaternion(player.quaternion);
+            right.applyQuaternion(player.quaternion);
+
+            if (keys['w']) {
+                player.position.add(forward.multiplyScalar(speed));
+            }
+            if (keys['s']) {
+                player.position.add(forward.multiplyScalar(-speed));
+            }
+            if (keys['a']) {
+                player.position.add(right.multiplyScalar(-speed));
+            }
+            if (keys['d']) {
+                player.position.add(right.multiplyScalar(speed));
+            }
+
+            // Pastaya yaklaştık mı kontrol et
+            const distanceToCake = Math.sqrt(
+                Math.pow(player.position.x - cake.position.x, 2) + 
+                Math.pow(player.position.z - cake.position.z, 2)
+            );
+
+            if (distanceToCake < 3 && !cakeReached) {
+                cakeReached = true;
+                showBirthdayCelebration();
+            }
+        }
+
+        function showBirthdayCelebration() {
+            instructionsDiv.classList.add('hidden');
+            messageDiv.style.display = 'none';
+            birthdayScreen.style.display = 'flex';
+
+            // Konfeti efekti
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#FFD93D'];
+            
+            for (let i = 0; i < 100; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti-piece';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 2 + 's';
+                    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    birthdayScreen.appendChild(confetti);
+                }, i * 30);
+            }
+
+            // Pasta animasyonu
+            let rotation = 0;
+            const cakeAnimation = setInterval(() => {
+                rotation += 0.05;
+                cake.rotation.y = rotation;
+                
+                family.forEach((person, index) => {
+                    person.rotation.y = Math.sin(Date.now() * 0.001 + index) * 0.3;
+                });
+            }, 50);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (gameMode === 'driving') {
+                updateCar();
+            } else if (gameMode === 'walking') {
+                updatePlayer();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        init();
+    </script>
+</body>
+</html>
