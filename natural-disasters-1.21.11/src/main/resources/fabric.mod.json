@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "naturaldisasters",
+  "version": "${version}",
+  "name": "Natural Disasters",
+  "description": "Random and command-triggered natural disasters for Minecraft 1.21.11.",
+  "authors": ["Kaos Studio"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.kaosstudio.naturaldisasters.NaturalDisasters"]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": "1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
