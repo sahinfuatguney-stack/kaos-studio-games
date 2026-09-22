@@ -1,0 +1,16 @@
+{
+  "type": "celestial_realm:celestial_realm",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "layers": [
+        {"height": 2, "block": "celestial_realm:dark_matter_stone"},
+        {"height": 4, "block": "celestial_realm:crystallized_nebula_block"}
+      ],
+      "biome": "celestial_realm:celestial_biome",
+      "lakes": false,
+      "features": false,
+      "structure_overrides": []
+    }
+  }
+}
