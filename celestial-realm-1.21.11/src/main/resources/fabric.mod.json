@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "celestial_realm",
+  "version": "${version}",
+  "name": "Celestial Realm",
+  "description": "A custom Minecraft 1.21.11 Fabric dimension with floating islands, structures, trees and two realm creatures.",
+  "authors": ["Fuat"],
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.fuat.celestialrealm.CelestialRealmMod"],
+    "client": ["com.fuat.celestialrealm.client.CelestialRealmClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
