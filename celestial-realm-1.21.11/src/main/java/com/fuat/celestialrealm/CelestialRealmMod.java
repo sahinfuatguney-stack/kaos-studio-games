@@ -23,7 +23,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 
-public final class CelestialRealmMod {
+public final class CelestialRealmMod implements ModInitializer {
     public static final String MOD_ID = "celestial_realm";
 
     public static final Identifier NEBULA_ID = Identifier.of(MOD_ID, "crystallized_nebula_block");
@@ -98,33 +98,26 @@ public final class CelestialRealmMod {
                     .build(VOID_CRAWLER_KEY)
     );
 
-    private CelestialRealmMod() {}
+    @Override
+    public void onInitialize() {
+        BiomeModifications.addSpawn(BiomeSelectors.includeByKey(CELESTIAL_BIOME_KEY), SpawnGroup.MONSTER, NEBULA_WISP, 45, 1, 2);
+        BiomeModifications.addSpawn(BiomeSelectors.includeByKey(CELESTIAL_BIOME_KEY), SpawnGroup.MONSTER, VOID_CRAWLER, 25, 1, 1);
 
-    public static void init() {
-    }
-    
-    public static class Initializer implements ModInitializer {
-        @Override
-        public void onInitialize() {
-            BiomeModifications.addSpawn(BiomeSelectors.includeByKey(CELESTIAL_BIOME_KEY), SpawnGroup.MONSTER, NEBULA_WISP, 45, 1, 2);
-            BiomeModifications.addSpawn(BiomeSelectors.includeByKey(CELESTIAL_BIOME_KEY), SpawnGroup.MONSTER, VOID_CRAWLER, 25, 1, 1);
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+            dispatcher.register(CommandManager.literal("celestial").executes(context -> {
+                ServerWorld world = context.getSource().getServer().getWorld(CELESTIAL_WORLD);
+                var player = context.getSource().getPlayer();
+                if (world == null || player == null) return 0;
+                RealmBuilder.buildStarterRealm(world);
+                player.teleport(world, 0.5, 30.0, 0.5, java.util.Set.of(), player.getYaw(), player.getPitch(), true);
+                return 1;
+            }));
+        });
 
-            CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-                dispatcher.register(CommandManager.literal("celestial").executes(context -> {
-                    ServerWorld world = context.getSource().getServer().getWorld(CELESTIAL_WORLD);
-                    var player = context.getSource().getPlayer();
-                    if (world == null || player == null) return 0;
-                    RealmBuilder.buildStarterRealm(world);
-                    player.teleport(world, 0.5, 30.0, 0.5, java.util.Set.of(), player.getYaw(), player.getPitch(), true);
-                    return 1;
-                }));
-            });
-
-            ServerTickEvents.END_WORLD_TICK.register(world -> {
-                if (world.getRegistryKey().equals(CELESTIAL_WORLD)) {
-                    RealmBuilder.applyLowGravity(world);
-                }
-            });
-        }
+        ServerTickEvents.END_WORLD_TICK.register(world -> {
+            if (world.getRegistryKey().equals(CELESTIAL_WORLD)) {
+                RealmBuilder.applyLowGravity(world);
+            }
+        });
     }
 }
